@@ -1,1 +1,1 @@
-public protocol StateType: Sendable, Equatable {}
+public protocol StateType: Sendable, Equatable, Codable {}
