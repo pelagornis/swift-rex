@@ -14,13 +14,13 @@ public final class Store<R: Reducer>: @unchecked Sendable where R.State: StateTy
     public init(
         initialState: R.State,
         reducer: R,
-        middlewares: [AnyMiddleware<R.State, R.Action>] = [],
         effectStrategy: EffectStrategy = .concurrent,
-        enableTimeTravel: Bool = false
+        enableTimeTravel: Bool = false,
+        @MiddlewareBuilder<R.State, R.Action> middlewares: () -> [AnyMiddleware<R.State, R.Action>]
     ) {
         self.state = initialState
         self.reducer = reducer
-        self.middlewares = middlewares
+        self.middlewares = middlewares()
         self.effectEmitter = ActorIsolated(value: EffectEmitter<R.Action>())
         self.effectQueue = EffectQueue(strategy: effectStrategy, emitter: effectEmitter)
 
