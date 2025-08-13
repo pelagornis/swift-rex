@@ -1,6 +1,6 @@
 import Rex
 
-enum AppAction: ActionType {
+public enum AppAction: ActionType {
     case increment
     case decrement
     case reset
