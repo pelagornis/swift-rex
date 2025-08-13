@@ -1,8 +1,8 @@
 import Foundation
 
-public struct EmptyMiddleware<S: State, A: Action>: Middleware {
+public struct EmptyMiddleware<State: StateType, Action: ActionType>: Middleware {
     public init() {}
-    public func process(state: S, action: A, emit: @escaping (A) -> Void) async -> [Effect<A>] {
+    public func process(state: State, action: Action, emit: @escaping (Action) -> Void) async -> [Effect<Action>] {
         []
     }
 }

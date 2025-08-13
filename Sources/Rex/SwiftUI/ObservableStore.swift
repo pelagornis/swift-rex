@@ -3,8 +3,8 @@ import SwiftUI
 import Combine
 
 @MainActor
-public class ObservableStore<R: Reducer>: ObservableObject where R.S: State & Codable {
-    @Published public private(set) var state: R.S
+public class ObservableStore<R: Reducer>: ObservableObject where R.State: StateType & Codable {
+    @Published public private(set) var state: R.State
     private let store: Store<R>
 
     public init(store: Store<R>) {
@@ -18,7 +18,7 @@ public class ObservableStore<R: Reducer>: ObservableObject where R.S: State & Co
         }
     }
 
-    public func send(_ action: R.A) {
+    public func send(_ action: R.Action) {
         store.dispatch(action)
     }
 }

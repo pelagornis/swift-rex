@@ -1,1 +1,1 @@
-public protocol Action: Sendable {}
+public protocol ActionType: Sendable {}

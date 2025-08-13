@@ -1,8 +1,8 @@
 import Foundation
 
 public protocol Middleware: Sendable {
-    associatedtype S: State
-    associatedtype A: Action
+    associatedtype State: StateType
+    associatedtype Action: ActionType
 
-    func process(state: S, action: A, emit: @escaping (A) -> Void) async -> [Effect<A>]
+    func process(state: State, action: Action, emit: @escaping (Action) -> Void) async -> [Effect<Action>]
 }

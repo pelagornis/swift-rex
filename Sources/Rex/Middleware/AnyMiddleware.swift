@@ -1,13 +1,13 @@
-public struct AnyMiddleware<S: State, A: Action>: Middleware {
-    private let _process: @Sendable (S, A, @escaping (A) -> Void) async -> [Effect<A>]
+public struct AnyMiddleware<State: StateType, Action: ActionType>: Middleware {
+    private let _process: @Sendable (State, Action, @escaping (Action) -> Void) async -> [Effect<Action>]
 
-    public init<M: Middleware>(_ middleware: M) where M.S == S, M.A == A {
+    public init<M: Middleware>(_ middleware: M) where M.State == State, M.Action == Action {
         _process = { state, action, emit in
             await middleware.process(state: state, action: action, emit: emit)
         }
     }
 
-    public func process(state: S, action: A, emit: @escaping (A) -> Void) async -> [Effect<A>] {
+    public func process(state: State, action: Action, emit: @escaping (Action) -> Void) async -> [Effect<Action>] {
         await _process(state, action, emit)
     }
 }

@@ -4,19 +4,19 @@ public enum EffectStrategy: Sendable {
     case latestOnly
 }
 
-public actor EffectQueue<A: Action> {
+public actor EffectQueue<Action: ActionType> {
     private let strategy: EffectStrategy
-    private let emitter: ActorIsolated<EffectEmitter<A>>
+    private let emitter: ActorIsolated<EffectEmitter<Action>>
 
     private var tasks: [Task<Void, Never>] = []
     private var latestTasks: [String: Task<Void, Never>] = [:]
 
-    public init(strategy: EffectStrategy = .concurrent, emitter: ActorIsolated<EffectEmitter<A>>) {
+    public init(strategy: EffectStrategy = .concurrent, emitter: ActorIsolated<EffectEmitter<Action>>) {
         self.strategy = strategy
         self.emitter = emitter
     }
 
-    public func enqueue(_ effect: Effect<A>, key: String? = nil) {
+    public func enqueue(_ effect: Effect<Action>, key: String? = nil) {
         switch strategy {
         case .concurrent:
             let task = Task {

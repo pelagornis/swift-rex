@@ -1,8 +1,8 @@
 import Foundation
 
 public protocol Reducer {
-    associatedtype S: State
-    associatedtype A: Action
+    associatedtype State: StateType
+    associatedtype Action: ActionType
 
-    func reduce(state: inout S, action: A) -> [Effect<A>]
+    func reduce(state: inout State, action: Action) -> [Effect<Action>]
 }
