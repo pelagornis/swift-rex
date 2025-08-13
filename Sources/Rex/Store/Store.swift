@@ -1,6 +1,6 @@
 import Foundation
 
-public final class Store<R: Reducer>: @unchecked Sendable where R.State: StateType & Codable {
+public final class Store<R: Reducer>: @unchecked Sendable where R.State: StateType {
     public private(set) var state: R.State
     private let reducer: R
     private let middlewares: [AnyMiddleware<R.State, R.Action>]
