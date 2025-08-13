@@ -3,7 +3,7 @@ import SwiftUI
 import Combine
 
 @MainActor
-public class ObservableStore<R: Reducer>: ObservableObject where R.State: StateType & Codable {
+public final class ObservableStore<R: Reducer>: ObservableObject where R.State: StateType {
     @Published public private(set) var state: R.State
     private let store: Store<R>
 
@@ -22,5 +22,4 @@ public class ObservableStore<R: Reducer>: ObservableObject where R.State: StateT
         store.dispatch(action)
     }
 }
-
 #endif
