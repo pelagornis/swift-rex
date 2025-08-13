@@ -21,6 +21,10 @@ let package = Package(
         )
     ],
     targets: [
-        .target(name: "Rex")
+        .target(name: "Rex"),
+        .testTarget(
+            name: "RexTests",
+            dependencies: ["Rex"]
+        )
     ]
 )
