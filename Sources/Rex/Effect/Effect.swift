@@ -10,4 +10,12 @@ public struct Effect<Action: ActionType>: Sendable {
     public static var none: Effect {
         Effect { _ in }
     }
+
+    public static func just(_ action: Action) -> Effect {
+        Effect { emitter in
+            await emitter.withValue { emitter in
+                await emitter.send(action)
+            }
+        }
+    }
 }
