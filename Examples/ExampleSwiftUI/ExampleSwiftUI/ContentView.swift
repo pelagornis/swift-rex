@@ -2,19 +2,21 @@ import SwiftUI
 import Rex
 
 struct ContentView: View {
-    @StateObject var store = AppStoreObservable()
-    
+    @StateObject var store: AppStore
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        VStack(spacing: 20) {
+            Text("Count: \(store.state.count)")
+            if store.state.isLoading { ProgressView() }
+
+            HStack {
+                Button("Increment") { store.send(.increment) }
+                Button("Decrement") { store.send(.decrement) }
+            }
+
+            Button("Reset with Just") { store.send(.reset) }
+            Button("Load") { store.send(.loadFromServer) }
         }
         .padding()
     }
-}
-
-#Preview {
-    ContentView()
 }

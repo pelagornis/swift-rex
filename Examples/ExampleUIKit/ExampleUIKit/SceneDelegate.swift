@@ -1,11 +1,17 @@
 import UIKit
+import Rex
 
 final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        guard let _ = (scene as? UIWindowScene) else { return }
+        guard let ws = (scene as? UIWindowScene) else { return }
+        window = UIWindow(windowScene: ws)
+        let store = Store(initialState: AppState(), reducer: AppReducer())
+        let viewcontroller = ViewController(store: store)
+        window?.rootViewController = viewcontroller
+        window?.makeKeyAndVisible()
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {}
