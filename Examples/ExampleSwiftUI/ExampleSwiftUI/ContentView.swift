@@ -1,13 +1,9 @@
-//
-//  ContentView.swift
-//  ExampleSwiftUI
-//
-//  Created by Jihoonahn on 8/13/25.
-//
-
 import SwiftUI
+import Rex
 
 struct ContentView: View {
+    @StateObject var store = AppStoreObservable()
+    
     var body: some View {
         VStack {
             Image(systemName: "globe")

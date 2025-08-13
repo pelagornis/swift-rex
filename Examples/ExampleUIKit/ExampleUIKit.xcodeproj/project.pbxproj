@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DCC383C72E4C6A1600AFA983 /* Rex in Frameworks */ = {isa = PBXBuildFile; productRef = DCC383C62E4C6A1600AFA983 /* Rex */; };
+		DCC383E52E4C6BC300AFA983 /* Rex in Frameworks */ = {isa = PBXBuildFile; productRef = DCC383E42E4C6BC300AFA983 /* Rex */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		DCC383AD2E4C699B00AFA983 /* ExampleUIKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ExampleUIKit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +41,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DCC383E52E4C6BC300AFA983 /* Rex in Frameworks */,
+				DCC383C72E4C6A1600AFA983 /* Rex in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -46,6 +53,7 @@
 			isa = PBXGroup;
 			children = (
 				DCC383AF2E4C699B00AFA983 /* ExampleUIKit */,
+				DCC383E32E4C6BB100AFA983 /* Frameworks */,
 				DCC383AE2E4C699B00AFA983 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -56,6 +64,13 @@
 				DCC383AD2E4C699B00AFA983 /* ExampleUIKit.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		DCC383E32E4C6BB100AFA983 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -78,6 +93,8 @@
 			);
 			name = ExampleUIKit;
 			packageProductDependencies = (
+				DCC383C62E4C6A1600AFA983 /* Rex */,
+				DCC383E42E4C6BC300AFA983 /* Rex */,
 			);
 			productName = ExampleUIKit;
 			productReference = DCC383AD2E4C699B00AFA983 /* ExampleUIKit.app */;
@@ -107,6 +124,9 @@
 			);
 			mainGroup = DCC383A42E4C699B00AFA983;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DCC383C52E4C6A1600AFA983 /* XCLocalSwiftPackageReference "../../../swift-rex" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DCC383AE2E4C699B00AFA983 /* Products */;
 			projectDirPath = "";
@@ -337,6 +357,24 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		DCC383C52E4C6A1600AFA983 /* XCLocalSwiftPackageReference "../../../swift-rex" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../../swift-rex";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DCC383C62E4C6A1600AFA983 /* Rex */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Rex;
+		};
+		DCC383E42E4C6BC300AFA983 /* Rex */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Rex;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = DCC383A52E4C699B00AFA983 /* Project object */;
 }

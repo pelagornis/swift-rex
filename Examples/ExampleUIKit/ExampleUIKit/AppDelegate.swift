@@ -1,10 +1,3 @@
-//
-//  AppDelegate.swift
-//  ExampleUIKit
-//
-//  Created by Jihoonahn on 8/13/25.
-//
-
 import UIKit
 
 @main
