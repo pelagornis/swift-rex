@@ -17,12 +17,17 @@ jobs:
     runs-on: macos-15
     steps:
       - name: Checkout Package
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2.3.0
+        with:
+          swift-version: "6.0.0"
+
       - name: Checkout gh-pages Branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: docs-out
@@ -58,7 +63,7 @@ jobs:
 
           for tag in $all_releases; do
             echo "⏳ Generating documentation for $tag release."
-            
+
             if [ -d "docs-out/$tag" ]; then
               echo "✅ Documentation for $tag already exists."
             else
@@ -73,7 +78,7 @@ jobs:
               else
                 git checkout -f "$tag"
               fi
-              
+
               # Check if Swift supports generate-documentation
               if swift package --help | grep -q "generate-documentation"; then
                 swift package \
@@ -87,6 +92,8 @@ jobs:
                   || echo "⚠️ Documentation failed for $tag."
               else
                 echo "⚠️ Swift version does not support generate-documentation, skipping $tag"
+                echo "Current Swift version:"
+                swift --version
               fi
             fi
           done
