@@ -3,47 +3,44 @@ import Rex
 import Combine
 
 class ViewController: UIViewController {
+    private let store: Store<AppReducer>
+    private var cancellables: Set<AnyCancellable> = []
     
-    // MARK: - Properties
-    let store: Store<AppReducer>
-    private var cancellables = Set<AnyCancellable>()
-    
-    // MARK: - UI Elements
+    // UI Elements
     private let scrollView = UIScrollView()
     private let contentView = UIView()
-    
     private let titleLabel = UILabel()
     private let scoreLabel = UILabel()
     private let levelLabel = UILabel()
     private let livesLabel = UILabel()
-    
-    private let startButton = UIButton(type: .system)
-    private let endButton = UIButton(type: .system)
-    private let scoreButton = UIButton(type: .system)
-    private let lifeButton = UIButton(type: .system)
-    
-    private let eventButton1 = UIButton(type: .system)
-    private let eventButton2 = UIButton(type: .system)
-    private let eventButton3 = UIButton(type: .system)
-    private let secondPageButton = UIButton(type: .system)
-    
+    private let gameStatusLabel = UILabel()
     private let logTextView = UITextView()
     
-    // MARK: - Initialization
-    init(store: Store<AppReducer>) {
-        self.store = store
+    // Buttons
+    private let startGameButton = UIButton()
+    private let endGameButton = UIButton()
+    private let addScoreButton = UIButton()
+    private let loseLifeButton = UIButton()
+    private let event1Button = UIButton()
+    private let event2Button = UIButton()
+    private let event3Button = UIButton()
+    private let secondPageButton = UIButton()
+    
+    init() {
+        self.store = Store(
+            initialState: AppState(),
+            reducer: AppReducer()
+        )
         super.init(nibName: nil, bundle: nil)
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
-    // MARK: - Lifecycle
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        setupConstraints()
         setupStoreSubscription()
         setupEventBus()
     }
@@ -52,111 +49,85 @@ class ViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .systemBackground
         
-        // Scroll View
+        // ScrollView setup
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         contentView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        scrollView.addSubview(contentView)
         
-        // Labels
-        titleLabel.text = "Game Center"
-        titleLabel.font = .systemFont(ofSize: 24, weight: .bold)
+        // Title
+        titleLabel.text = "Game App"
+        titleLabel.font = .systemFont(ofSize: 28, weight: .bold)
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(titleLabel)
         
+        // Game Stats
         scoreLabel.text = "Score: 0"
         scoreLabel.font = .systemFont(ofSize: 18)
         scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(scoreLabel)
         
         levelLabel.text = "Level: 1"
         levelLabel.font = .systemFont(ofSize: 18)
         levelLabel.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(levelLabel)
         
         livesLabel.text = "Lives: 3"
         livesLabel.font = .systemFont(ofSize: 18)
         livesLabel.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(livesLabel)
+        
+        gameStatusLabel.text = "Game Status: Not Started"
+        gameStatusLabel.font = .systemFont(ofSize: 16)
+        gameStatusLabel.textColor = .secondaryLabel
+        gameStatusLabel.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(gameStatusLabel)
         
         // Buttons
-        setupButton(startButton, title: "Start Game", color: .systemGreen)
-        setupButton(endButton, title: "End Game", color: .systemRed)
-        setupButton(scoreButton, title: "Add Score", color: .systemBlue)
-        setupButton(lifeButton, title: "Lose Life", color: .systemOrange)
+        setupButton(startGameButton, title: "Start Game", color: .systemGreen)
+        setupButton(endGameButton, title: "End Game", color: .systemRed)
+        setupButton(addScoreButton, title: "Add Score", color: .systemBlue)
+        setupButton(loseLifeButton, title: "Lose Life", color: .systemOrange)
+        setupButton(event1Button, title: "Event 1", color: .systemPurple)
+        setupButton(event2Button, title: "Event 2", color: .systemIndigo)
+        setupButton(event3Button, title: "Event 3", color: .systemTeal)
+        setupButton(secondPageButton, title: "Go to Second Page", color: .systemPink)
         
-        setupButton(eventButton1, title: "Event 1", color: .systemPurple)
-        setupButton(eventButton2, title: "Event 2", color: .systemTeal)
-        setupButton(eventButton3, title: "Event 3", color: .systemIndigo)
-        setupButton(secondPageButton, title: "Go to Second Page", color: .systemBrown)
-        
-        // Log Text View
-        logTextView.text = "Events will appear here..."
-        logTextView.font = .systemFont(ofSize: 14)
+        // Log TextView
+        logTextView.text = "Events will appear here...\n"
+        logTextView.font = .systemFont(ofSize: 12)
         logTextView.backgroundColor = .systemGray6
         logTextView.layer.cornerRadius = 8
         logTextView.isEditable = false
         logTextView.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Add targets
-        startButton.addTarget(self, action: #selector(startGame), for: .touchUpInside)
-        endButton.addTarget(self, action: #selector(endGame), for: .touchUpInside)
-        scoreButton.addTarget(self, action: #selector(addScore), for: .touchUpInside)
-        lifeButton.addTarget(self, action: #selector(loseLife), for: .touchUpInside)
-        
-        eventButton1.addTarget(self, action: #selector(event1), for: .touchUpInside)
-        eventButton2.addTarget(self, action: #selector(event2), for: .touchUpInside)
-        eventButton3.addTarget(self, action: #selector(event3), for: .touchUpInside)
-        secondPageButton.addTarget(self, action: #selector(goToSecondPage), for: .touchUpInside)
-        
-        // View hierarchy
-        view.addSubview(scrollView)
-        scrollView.addSubview(contentView)
-        
-        contentView.addSubview(titleLabel)
-        contentView.addSubview(scoreLabel)
-        contentView.addSubview(levelLabel)
-        contentView.addSubview(livesLabel)
-        contentView.addSubview(startButton)
-        contentView.addSubview(endButton)
-        contentView.addSubview(scoreButton)
-        contentView.addSubview(lifeButton)
-        contentView.addSubview(eventButton1)
-        contentView.addSubview(eventButton2)
-        contentView.addSubview(eventButton3)
-        contentView.addSubview(secondPageButton)
         contentView.addSubview(logTextView)
+        
+        setupConstraints()
     }
     
     private func setupButton(_ button: UIButton, title: String, color: UIColor) {
         button.setTitle(title, for: .normal)
         button.backgroundColor = color
-        button.setTitleColor(.white, for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-        button.layer.cornerRadius = 12
+        button.layer.cornerRadius = 8
+        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        contentView.addSubview(button)
         
         // Add touch feedback
         button.addTarget(self, action: #selector(buttonTouchDown(_:)), for: .touchDown)
         button.addTarget(self, action: #selector(buttonTouchUp(_:)), for: [.touchUpInside, .touchUpOutside, .touchCancel])
     }
     
-    @objc private func buttonTouchDown(_ sender: UIButton) {
-        UIView.animate(withDuration: 0.1) {
-            sender.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
-        }
-    }
-    
-    @objc private func buttonTouchUp(_ sender: UIButton) {
-        UIView.animate(withDuration: 0.1) {
-            sender.transform = CGAffineTransform.identity
-        }
-    }
-    
     private func setupConstraints() {
         NSLayoutConstraint.activate([
-            // Scroll View
+            // ScrollView
             scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
+            // ContentView
             contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
             contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
@@ -168,58 +139,68 @@ class ViewController: UIViewController {
             titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             
-            // Stats
-            scoreLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 30),
+            // Game Stats
+            scoreLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 20),
             scoreLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            scoreLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             
-            levelLabel.topAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: 10),
+            levelLabel.topAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: 8),
             levelLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            levelLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             
-            livesLabel.topAnchor.constraint(equalTo: levelLabel.bottomAnchor, constant: 10),
+            livesLabel.topAnchor.constraint(equalTo: levelLabel.bottomAnchor, constant: 8),
             livesLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            livesLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             
-            // Game Buttons
-            startButton.topAnchor.constraint(equalTo: livesLabel.bottomAnchor, constant: 30),
-            startButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            startButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            gameStatusLabel.topAnchor.constraint(equalTo: livesLabel.bottomAnchor, constant: 8),
+            gameStatusLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             
-            endButton.topAnchor.constraint(equalTo: startButton.bottomAnchor, constant: 12),
-            endButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            endButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            // Buttons - First Row
+            startGameButton.topAnchor.constraint(equalTo: gameStatusLabel.bottomAnchor, constant: 20),
+            startGameButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            startGameButton.widthAnchor.constraint(equalToConstant: 120),
+            startGameButton.heightAnchor.constraint(equalToConstant: 44),
             
-            scoreButton.topAnchor.constraint(equalTo: endButton.bottomAnchor, constant: 12),
-            scoreButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            scoreButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            endGameButton.topAnchor.constraint(equalTo: startGameButton.topAnchor),
+            endGameButton.leadingAnchor.constraint(equalTo: startGameButton.trailingAnchor, constant: 10),
+            endGameButton.widthAnchor.constraint(equalToConstant: 120),
+            endGameButton.heightAnchor.constraint(equalToConstant: 44),
             
-            lifeButton.topAnchor.constraint(equalTo: scoreButton.bottomAnchor, constant: 12),
-            lifeButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            lifeButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            // Buttons - Second Row
+            addScoreButton.topAnchor.constraint(equalTo: startGameButton.bottomAnchor, constant: 10),
+            addScoreButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            addScoreButton.widthAnchor.constraint(equalToConstant: 120),
+            addScoreButton.heightAnchor.constraint(equalToConstant: 44),
             
-            // Event Buttons
-            eventButton1.topAnchor.constraint(equalTo: lifeButton.bottomAnchor, constant: 30),
-            eventButton1.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            eventButton1.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            loseLifeButton.topAnchor.constraint(equalTo: addScoreButton.topAnchor),
+            loseLifeButton.leadingAnchor.constraint(equalTo: addScoreButton.trailingAnchor, constant: 10),
+            loseLifeButton.widthAnchor.constraint(equalToConstant: 120),
+            loseLifeButton.heightAnchor.constraint(equalToConstant: 44),
             
-            eventButton2.topAnchor.constraint(equalTo: eventButton1.bottomAnchor, constant: 12),
-            eventButton2.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            eventButton2.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            // Buttons - Third Row
+            event1Button.topAnchor.constraint(equalTo: addScoreButton.bottomAnchor, constant: 10),
+            event1Button.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            event1Button.widthAnchor.constraint(equalToConstant: 80),
+            event1Button.heightAnchor.constraint(equalToConstant: 44),
             
-            eventButton3.topAnchor.constraint(equalTo: eventButton2.bottomAnchor, constant: 12),
-            eventButton3.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            eventButton3.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            event2Button.topAnchor.constraint(equalTo: event1Button.topAnchor),
+            event2Button.leadingAnchor.constraint(equalTo: event1Button.trailingAnchor, constant: 10),
+            event2Button.widthAnchor.constraint(equalToConstant: 80),
+            event2Button.heightAnchor.constraint(equalToConstant: 44),
             
-            secondPageButton.topAnchor.constraint(equalTo: eventButton3.bottomAnchor, constant: 12),
+            event3Button.topAnchor.constraint(equalTo: event2Button.topAnchor),
+            event3Button.leadingAnchor.constraint(equalTo: event2Button.trailingAnchor, constant: 10),
+            event3Button.widthAnchor.constraint(equalToConstant: 80),
+            event3Button.heightAnchor.constraint(equalToConstant: 44),
+            
+            // Second Page Button
+            secondPageButton.topAnchor.constraint(equalTo: event1Button.bottomAnchor, constant: 20),
             secondPageButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             secondPageButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            secondPageButton.heightAnchor.constraint(equalToConstant: 44),
             
-            // Log
-            logTextView.topAnchor.constraint(equalTo: secondPageButton.bottomAnchor, constant: 30),
+            // Log TextView
+            logTextView.topAnchor.constraint(equalTo: secondPageButton.bottomAnchor, constant: 20),
             logTextView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             logTextView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            logTextView.heightAnchor.constraint(equalToConstant: 150),
+            logTextView.heightAnchor.constraint(equalToConstant: 200),
             logTextView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
         ])
     }
@@ -233,10 +214,8 @@ class ViewController: UIViewController {
         }
     }
     
-    // MARK: - Event Bus
+    // MARK: - Event Bus Setup
     private func setupEventBus() {
-        print("Setting up EventBus subscriptions...")
-        
         Task { @MainActor in
             // Subscribe to all events
             store.getEventBus().subscribe { [weak self] event in
@@ -244,7 +223,6 @@ class ViewController: UIViewController {
                     self?.addLog("📱 Event: \(type(of: event))")
                 }
             }
-            .store(in: &cancellables)
             
             // Subscribe to specific event types
             store.getEventBus().subscribe(to: AppEvent.self) { [weak self] event in
@@ -257,7 +235,6 @@ class ViewController: UIViewController {
                     }
                 }
             }
-            .store(in: &cancellables)
             
             store.getEventBus().subscribe(to: NavigationEvent.self) { [weak self] event in
                 DispatchQueue.main.async {
@@ -269,14 +246,12 @@ class ViewController: UIViewController {
                     }
                 }
             }
-            .store(in: &cancellables)
             
             store.getEventBus().subscribe(to: UserActionEvent.self) { [weak self] event in
                 DispatchQueue.main.async {
                     self?.addLog("👤 User Action: \(event.action)")
                 }
             }
-            .store(in: &cancellables)
             
             addLog("🚀 EventBus subscriptions setup complete")
         }
@@ -287,6 +262,7 @@ class ViewController: UIViewController {
         scoreLabel.text = "Score: \(state.score)"
         levelLabel.text = "Level: \(state.level)"
         livesLabel.text = "Lives: \(state.lives)"
+        gameStatusLabel.text = "Game Status: \(state.isGameActive ? "Active" : "Not Started")"
     }
     
     private func addLog(_ message: String) {
@@ -338,45 +314,66 @@ class ViewController: UIViewController {
     
     @objc private func event1() {
         print("Event 1 tapped")
-        addLog("🎯 Event 1 Button Pressed")
-        store.dispatch(AppAction.triggerScoreEvent)
-        print("Publishing score_event...")
         Task { @MainActor in
-            store.getEventBus().publish(AppEvent(name: "score_event", data: ["message": "Score event triggered!"]))
+            store.getEventBus().publish(AppEvent(name: "event_1", data: ["message": "Event 1 triggered!"]))
+            addLog("📤 Event 1 published")
         }
     }
     
     @objc private func event2() {
         print("Event 2 tapped")
-        addLog("🎯 Event 2 Button Pressed")
-        store.dispatch(AppAction.triggerLevelUpEvent)
-        print("Publishing level_up_event...")
         Task { @MainActor in
-            store.getEventBus().publish(AppEvent(name: "level_up_event", data: ["message": "Level up event triggered!"]))
+            store.getEventBus().publish(AppEvent(name: "event_2", data: ["message": "Event 2 triggered!"]))
+            addLog("📤 Event 2 published")
         }
     }
     
     @objc private func event3() {
         print("Event 3 tapped")
-        addLog("🎯 Event 3 Button Pressed")
-        store.dispatch(AppAction.triggerPowerUpEvent)
-        print("Publishing power_up_event...")
         Task { @MainActor in
-            store.getEventBus().publish(AppEvent(name: "power_up_event", data: ["message": "Power up event triggered!"]))
+            store.getEventBus().publish(AppEvent(name: "event_3", data: ["message": "Event 3 triggered!"]))
+            addLog("📤 Event 3 published")
         }
     }
     
     @objc private func goToSecondPage() {
         print("Go to Second Page tapped")
-        addLog("📱 Navigating to Second Page")
-        
-        // Send navigation event before presenting
-        Task { @MainActor in
-            store.getEventBus().publish(NavigationEvent(route: "first_to_second", parameters: ["action": "navigate"]))
+        let secondVC = SecondViewController(store: store)
+        navigationController?.pushViewController(secondVC, animated: true)
+    }
+    
+    // MARK: - Button Touch Feedback
+    @objc private func buttonTouchDown(_ sender: UIButton) {
+        UIView.animate(withDuration: 0.1) {
+            sender.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
+        }
+    }
+    
+    @objc private func buttonTouchUp(_ sender: UIButton) {
+        UIView.animate(withDuration: 0.1) {
+            sender.transform = CGAffineTransform.identity
         }
         
-        let secondVC = SecondViewController(store: store)
-        secondVC.modalPresentationStyle = .fullScreen
-        present(secondVC, animated: true)
+        // Handle button actions
+        switch sender {
+        case startGameButton:
+            startGame()
+        case endGameButton:
+            endGame()
+        case addScoreButton:
+            addScore()
+        case loseLifeButton:
+            loseLife()
+        case event1Button:
+            event1()
+        case event2Button:
+            event2()
+        case event3Button:
+            event3()
+        case secondPageButton:
+            goToSecondPage()
+        default:
+            break
+        }
     }
 }

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DCBB99B32E4F7B4A00FA1AC0 /* Rex in Frameworks */ = {isa = PBXBuildFile; productRef = DCBB99B22E4F7B4A00FA1AC0 /* Rex */; };
 		DCC383CA2E4C6A7400AFA983 /* Rex in Frameworks */ = {isa = PBXBuildFile; productRef = DCC383C92E4C6A7400AFA983 /* Rex */; };
 		DCC383D22E4C6A9C00AFA983 /* Rex in Frameworks */ = {isa = PBXBuildFile; productRef = DCC383D12E4C6A9C00AFA983 /* Rex */; };
 /* End PBXBuildFile section */
@@ -28,6 +29,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DCBB99B32E4F7B4A00FA1AC0 /* Rex in Frameworks */,
 				DCC383D22E4C6A9C00AFA983 /* Rex in Frameworks */,
 				DCC383CA2E4C6A7400AFA983 /* Rex in Frameworks */,
 			);
@@ -74,6 +76,7 @@
 			packageProductDependencies = (
 				DCC383C92E4C6A7400AFA983 /* Rex */,
 				DCC383D12E4C6A9C00AFA983 /* Rex */,
+				DCBB99B22E4F7B4A00FA1AC0 /* Rex */,
 			);
 			productName = ExampleSwiftUI;
 			productReference = DCC383962E4C697700AFA983 /* ExampleSwiftUI.app */;
@@ -345,6 +348,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		DCBB99B22E4F7B4A00FA1AC0 /* Rex */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Rex;
+		};
 		DCC383C92E4C6A7400AFA983 /* Rex */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Rex;

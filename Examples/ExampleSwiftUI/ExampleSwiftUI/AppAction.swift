@@ -2,6 +2,11 @@ import Foundation
 import Rex
 
 public enum AppAction: ActionType {
+    // User actions
+    case userLogin
+    case userLogout
+    case userLoaded(AppState.User)
+    
     // Chat actions
     case sendMessage(String)
     case messageReceived(AppState.Message)

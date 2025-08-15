@@ -18,7 +18,7 @@ public struct AppReducer: Reducer {
             let gameStartEvent = AppState.GameEvent(type: .gameStart, data: ["level": "1"])
             state.gameEvents.append(gameStartEvent)
             state.lastUpdated = Date()
-            return [.none]
+            return [Effect { _ in }]
             
         case .endGame:
             state.isGameActive = false
@@ -32,7 +32,7 @@ public struct AppReducer: Reducer {
             )
             state.gameEvents.append(gameOverEvent)
             state.lastUpdated = Date()
-            return [.none]
+            return [Effect { _ in }]
             
         case .addScore(let points):
             state.score += points
@@ -98,7 +98,7 @@ public struct AppReducer: Reducer {
                 }]
             }
             
-            return [.none]
+            return [Effect { _ in }]
             
         case .loseLife:
             state.lives -= 1
@@ -118,7 +118,7 @@ public struct AppReducer: Reducer {
                 }]
             }
             
-            return [.none]
+            return [Effect { _ in }]
             
         case .gainLife:
             state.lives += 1
@@ -129,7 +129,7 @@ public struct AppReducer: Reducer {
                 data: ["power_up_type": "life", "new_lives": String(state.lives)]
             )
             state.gameEvents.append(lifeGainedEvent)
-            return [.none]
+            return [Effect { _ in }]
             
         case .powerUp:
             state.lastUpdated = Date()
@@ -139,7 +139,7 @@ public struct AppReducer: Reducer {
                 data: ["power_up_type": "bonus"]
             )
             state.gameEvents.append(powerUpEvent)
-            return [.none]
+            return [Effect { _ in }]
             
         case .unlockAchievement(let achievementId):
             if let index = state.achievements.firstIndex(where: { $0.id == achievementId }) {
@@ -158,7 +158,7 @@ public struct AppReducer: Reducer {
                 state.gameEvents.append(achievementEvent)
                 state.lastUpdated = Date()
             }
-            return [.none]
+            return [Effect { _ in }]
             
         // UI actions
         case .loadGame:
@@ -176,7 +176,7 @@ public struct AppReducer: Reducer {
         case .gameLoaded:
             state.isLoading = false
             state.lastUpdated = Date()
-            return [.none]
+            return [Effect { _ in }]
             
         case .saveGame:
             state.isLoading = true
@@ -192,18 +192,18 @@ public struct AppReducer: Reducer {
         case .gameSaved:
             state.isLoading = false
             state.lastUpdated = Date()
-            return [.none]
+            return [Effect { _ in }]
             
         case .showError(let message):
             state.errorMessage = message
             state.isLoading = false
             state.lastUpdated = Date()
-            return [.none]
+            return [Effect { _ in }]
             
         case .clearError:
             state.errorMessage = nil
             state.lastUpdated = Date()
-            return [.none]
+            return [Effect { _ in }]
             
         // Event Bus actions
         case .triggerScoreEvent:
@@ -252,7 +252,7 @@ public struct AppReducer: Reducer {
                     }
                 ]
             }
-            return [.none]
+            return [Effect { _ in }]
             
         case .triggerGameOverEvent:
             return [

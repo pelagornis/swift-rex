@@ -1,11 +1,9 @@
 import SwiftUI
 import Rex
-import Combine
 
 struct SecondView: View {
     @ObservedObject var store: AppStore
     @Environment(\.dismiss) private var dismiss
-    @State private var cancellables: Set<AnyCancellable> = []
     @State private var eventLog: [String] = []
     
     var body: some View {
@@ -133,25 +131,21 @@ struct SecondView: View {
             store.getEventBus().subscribe { event in
                 addLog("📱 All Event: \(type(of: event))")
             }
-            .store(in: &cancellables)
             
             // Subscribe to chat events
             store.getEventBus().subscribe(to: ChatEvent.self) { event in
                 addLog("💬 Chat Event: \(event.type) from \(event.sender)")
             }
-            .store(in: &cancellables)
             
             // Subscribe to user events
             store.getEventBus().subscribe(to: UserEvent.self) { event in
                 addLog("👤 User Event: \(event.action) by \(event.username)")
             }
-            .store(in: &cancellables)
             
             // Subscribe to system events
             store.getEventBus().subscribe(to: SystemEvent.self) { event in
                 addLog("⚙️ System Event: \(event.event)")
             }
-            .store(in: &cancellables)
             
             addLog("🚀 EventBus subscriptions setup complete")
         }

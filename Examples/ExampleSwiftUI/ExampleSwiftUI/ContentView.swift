@@ -1,123 +1,95 @@
 import SwiftUI
 import Rex
-import Combine
 
 struct ContentView: View {
     @StateObject var store: AppStore
-    @State private var cancellables: Set<AnyCancellable> = []
+    @State private var messageText = ""
     @State private var eventLog: [String] = []
-    @State private var messageText: String = ""
-    @State private var showingEventBus = false
-    @State private var showingSecondPage = false
-
+    @State private var showingSecondView = false
+    
+    init() {
+        let store = Store(
+            initialState: AppState(),
+            reducer: AppReducer()
+        )
+        self._store = StateObject(wrappedValue: AppStore(store: store))
+    }
+    
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
+            VStack(spacing: 20) {
                 // Header
                 VStack(spacing: 8) {
-                    Text("Swift-Rex Chat")
-                        .font(.title)
+                    Text("Chat App")
+                        .font(.largeTitle)
                         .fontWeight(.bold)
                     
-                    HStack {
-                        Text("Online: \(store.state.onlineUsers.count)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Spacer()
-                        
-                        if store.state.isLoading {
-                            HStack {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                Text("Loading...")
-                                    .font(.caption)
-                            }
-                        }
-                    }
+                    Text("Online: \(store.state.onlineUsers.count)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
                 .padding()
-                .background(Color(.systemBackground))
                 
-                // Messages
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(store.state.messages) { message in
-                                MessageBubbleView(message: message, isFromCurrentUser: message.sender.id == store.state.currentUser.id)
-                                    .id(message.id)
-                            }
-                            
-                            if store.state.isTyping {
-                                TypingIndicatorView()
-                            }
-                        }
+                // Loading indicator
+                if store.state.isLoading {
+                    ProgressView("Loading...")
                         .padding()
-                    }
-                    .onChange(of: store.state.messages.count) { _ in
-                        if let lastMessage = store.state.messages.last {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                            }
+                }
+                
+                // Chat messages
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(store.state.messages) { message in
+                            MessageBubbleView(message: message, isFromCurrentUser: message.sender.id == store.state.currentUser.id)
                         }
+                        
+                        if store.state.isTyping {
+                            TypingIndicatorView()
+                        }
+                    }
+                    .padding()
+                }
+                .onChange(of: store.state.messages.count) { _ in
+                    if let lastMessage = store.state.messages.last {
+                        print("New message: \(lastMessage.text)")
                     }
                 }
                 
-                // Input Area
-                VStack(spacing: 8) {
-                    HStack {
-                        TextField("Type a message...", text: $messageText)
-                            .textFieldStyle(.roundedBorder)
-                            .onSubmit {
-                                sendMessage()
-                            }
-                        
-                        Button("Send") {
-                            sendMessage()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(messageText.isEmpty)
-                    }
+                // Message input
+                HStack {
+                    TextField("Type a message...", text: $messageText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
                     
-                    // Event Bus Demo Buttons
-                    HStack(spacing: 8) {
-                        Button("Event Bus Demo") {
-                            showingEventBus.toggle()
-                        }
-                        .buttonStyle(.bordered)
-                        
-                        Button("Second Page") {
-                            showingSecondPage.toggle()
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.purple)
-                        
-                        Spacer()
-                        
-                        Button("Load Messages") {
-                            store.send(.loadMessages)
-                            publishEvent("Messages Loaded")
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(store.state.isLoading)
-                        
-                        Button("Clear") {
-                            store.send(.clearMessages)
-                            publishEvent("Messages Cleared")
-                        }
-                        .buttonStyle(.bordered)
+                    Button("Send") {
+                        sendMessage()
                     }
+                    .disabled(messageText.isEmpty || store.state.isLoading)
                 }
-                .padding()
-                .background(Color(.systemBackground))
+                .padding(.horizontal)
+                
+                // Event Bus Demo
+                EventBusDemoView(store: store, eventLog: $eventLog)
+                
+                // Navigation to second page
+                Button("Go to Second Page") {
+                    showingSecondView = true
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
+                
+                Spacer()
             }
-            .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Login") {
+                        store.send(.userLogin)
+                    }
+                    .disabled(store.state.isLoading)
+                }
+            }
         }
-        .sheet(isPresented: $showingEventBus) {
-            EventBusDemoView(store: store, eventLog: $eventLog)
-        }
-        .sheet(isPresented: $showingSecondPage) {
+        .sheet(isPresented: $showingSecondView) {
             SecondView(store: store)
         }
         .onAppear {
@@ -127,8 +99,8 @@ struct ContentView: View {
     
     private func sendMessage() {
         guard !messageText.isEmpty else { return }
+        
         store.send(.sendMessage(messageText))
-        publishEvent("Message Sent")
         messageText = ""
     }
     
@@ -142,7 +114,6 @@ struct ContentView: View {
                     eventLog.removeLast()
                 }
             }
-            .store(in: &cancellables)
             
             // Listen to chat events
             store.getEventBus().subscribe(to: ChatEvent.self) { event in
@@ -156,7 +127,6 @@ struct ContentView: View {
                     }
                 }
             }
-            .store(in: &cancellables)
             
             // Listen to user events
             store.getEventBus().subscribe(to: UserEvent.self) { event in
@@ -170,7 +140,6 @@ struct ContentView: View {
                     }
                 }
             }
-            .store(in: &cancellables)
             
             // Listen to system events
             store.getEventBus().subscribe(to: SystemEvent.self) { event in
@@ -184,7 +153,6 @@ struct ContentView: View {
                     }
                 }
             }
-            .store(in: &cancellables)
         }
     }
     
@@ -242,21 +210,11 @@ struct MessageBubbleView: View {
     }
     
     private var bubbleColor: Color {
-        switch message.type {
-        case .system:
-            return Color(.systemGray5)
-        case .text, .image:
-            return isFromCurrentUser ? .blue : Color(.systemGray6)
-        }
+        isFromCurrentUser ? .blue : Color(.systemGray5)
     }
     
     private var bubbleTextColor: Color {
-        switch message.type {
-        case .system:
-            return .secondary
-        case .text, .image:
-            return isFromCurrentUser ? .white : .primary
-        }
+        isFromCurrentUser ? .white : .primary
     }
 }
 
@@ -265,33 +223,26 @@ struct TypingIndicatorView: View {
     @State private var animationOffset: CGFloat = 0
     
     var body: some View {
-        HStack {
-            Text("🤖")
-                .font(.title2)
-            
-            HStack(spacing: 4) {
-                ForEach(0..<3) { index in
-                    Circle()
-                        .fill(Color.gray)
-                        .frame(width: 8, height: 8)
-                        .scaleEffect(1.0 + animationOffset)
-                        .animation(
-                            Animation.easeInOut(duration: 0.6)
-                                .repeatForever()
-                                .delay(Double(index) * 0.2),
-                            value: animationOffset
-                        )
-                }
+        HStack(spacing: 4) {
+            ForEach(0..<3) { index in
+                Circle()
+                    .fill(Color.gray)
+                    .frame(width: 8, height: 8)
+                    .scaleEffect(1.0)
+                    .animation(
+                        Animation.easeInOut(duration: 0.6)
+                            .repeatForever()
+                            .delay(Double(index) * 0.2),
+                        value: animationOffset
+                    )
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color(.systemGray6))
-            .cornerRadius(16)
-            
-            Spacer()
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color(.systemGray6))
+        .cornerRadius(16)
         .onAppear {
-            animationOffset = 0.3
+            animationOffset = 1.0
         }
     }
 }
@@ -300,91 +251,76 @@ struct TypingIndicatorView: View {
 struct EventBusDemoView: View {
     @ObservedObject var store: AppStore
     @Binding var eventLog: [String]
-    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Text("Event Bus Demo")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                VStack(spacing: 12) {
-                    Button("User Join") {
-                        store.send(.triggerUserJoin)
-                        publishEvent("User Join Event")
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Event Bus Demo")
+                .font(.headline)
+            
+            HStack(spacing: 12) {
+                Button("Event 1") {
+                    Task { @MainActor in
+                        store.getEventBus().publishSystemEvent(
+                            event: "button_click",
+                            details: ["button": "event_1", "timestamp": Date().description]
+                        )
                     }
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("User Leave") {
-                        store.send(.triggerUserLeave)
-                        publishEvent("User Leave Event")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("Send Bot Message") {
-                        store.send(.triggerMessageSent)
-                        publishEvent("Bot Message Event")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("Typing Indicator") {
-                        store.send(.triggerTyping)
-                        publishEvent("Typing Event")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("System Event") {
-                        store.send(.triggerSystemEvent)
-                        publishEvent("System Event")
-                    }
-                    .buttonStyle(.borderedProminent)
                 }
+                .buttonStyle(.bordered)
                 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Event Log")
-                        .font(.headline)
-                    
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 4) {
-                            ForEach(eventLog.prefix(10), id: \.self) { event in
-                                Text("• \(event)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
+                Button("Event 2") {
+                    Task { @MainActor in
+                        store.getEventBus().publishSystemEvent(
+                            event: "button_click",
+                            details: ["button": "event_2", "timestamp": Date().description]
+                        )
+                    }
+                }
+                .buttonStyle(.bordered)
+                
+                Button("Event 3") {
+                    Task { @MainActor in
+                        store.getEventBus().publishSystemEvent(
+                            event: "button_click",
+                            details: ["button": "event_3", "timestamp": Date().description]
+                        )
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Event Log")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 4) {
+                        ForEach(eventLog, id: \.self) { log in
+                            Text(log)
+                                .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(6)
                         }
                     }
-                    .frame(maxHeight: 200)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(8)
                 }
-                
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("Event Bus")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
+                .frame(maxHeight: 150)
+                .background(Color(.systemBackground))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color(.systemGray4), lineWidth: 1)
+                )
             }
         }
-    }
-    
-    private func publishEvent(_ name: String) {
-        Task { @MainActor in
-            store.getEventBus().publishAppEvent(name: name, data: ["timestamp": Date().description])
-        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
     }
 }
 
 #Preview {
-    ContentView(store: AppStore(store: Store(
-        initialState: AppState(),
-        reducer: AppReducer()
-    )))
+    ContentView()
 }

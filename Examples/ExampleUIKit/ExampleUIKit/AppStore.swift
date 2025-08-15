@@ -8,7 +8,7 @@ public class AppStore: ObservableObject {
 
     init(store: Store<AppReducer>) {
         self.store = store
-        self.state = store.state
+        self.state = store.getInitialState()
 
         store.subscribe { [weak self] newState in
             Task { @MainActor in
