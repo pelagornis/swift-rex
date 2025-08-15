@@ -28,31 +28,31 @@ public struct AppReducer: Reducer {
         case .userLogout:
             state.currentUser = AppState.User(id: "guest", name: "Guest", avatar: "👤")
             state.lastUpdated = Date()
-            return [Effect { _ in }]
-            
+            return [.none]
+
         case .userLoaded(let user):
             state.currentUser = user
             state.isLoading = false
             state.lastUpdated = Date()
-            return [Effect { _ in }]
-            
+            return [.none]
+
         // Chat actions
         case .sendMessage(let text):
             let message = AppState.Message(text: text, sender: state.currentUser)
             state.messages.append(message)
             state.lastUpdated = Date()
-            return [Effect { _ in }]
-            
+            return [.none]
+
         case .messageReceived(let message):
             state.messages.append(message)
             state.lastUpdated = Date()
-            return [Effect { _ in }]
-            
+            return [.none]
+
         case .setTyping(let isTyping):
             state.isTyping = isTyping
             state.lastUpdated = Date()
-            return [Effect { _ in }]
-            
+            return [.none]
+
         case .userJoined(let user):
             if !state.onlineUsers.contains(where: { $0.id == user.id }) {
                 state.onlineUsers.append(user)
@@ -64,8 +64,8 @@ public struct AppReducer: Reducer {
                 state.messages.append(systemMessage)
                 state.lastUpdated = Date()
             }
-            return [Effect { _ in }]
-            
+            return [.none]
+
         case .userLeft(let user):
             state.onlineUsers.removeAll { $0.id == user.id }
             let systemMessage = AppState.Message(
@@ -75,14 +75,14 @@ public struct AppReducer: Reducer {
             )
             state.messages.append(systemMessage)
             state.lastUpdated = Date()
-            return [Effect { _ in }]
-            
+            return [.none]
+
         // UI actions
         case .clearMessages:
             state.messages.removeAll()
             state.lastUpdated = Date()
-            return [Effect { _ in }]
-            
+            return [.none]
+
         case .loadMessages:
             state.isLoading = true
             state.errorMessage = nil
@@ -109,18 +109,18 @@ public struct AppReducer: Reducer {
             state.messages = messages
             state.isLoading = false
             state.lastUpdated = Date()
-            return [Effect { _ in }]
-            
+            return [.none]
+
         case .showError(let message):
             state.errorMessage = message
             state.isLoading = false
             state.lastUpdated = Date()
-            return [Effect { _ in }]
-            
+            return [.none]
+
         case .clearError:
             state.errorMessage = nil
             state.lastUpdated = Date()
-            return [Effect { _ in }]
+            return [.none]
             
         // Event Bus actions
         case .triggerUserJoin:
@@ -144,8 +144,8 @@ public struct AppReducer: Reducer {
                     }
                 ]
             }
-            return [Effect { _ in }]
-            
+            return [.none]
+
         case .triggerMessageSent:
             return [
                 Effect { emitter in
@@ -160,7 +160,7 @@ public struct AppReducer: Reducer {
                     let randomResponse = responses.randomElement() ?? "Interesting!"
                     let message = AppState.Message(text: randomResponse, sender: botUser)
                     await emitter.withValue { emitter in
-                        await emitter.send(.messageReceived(message))
+                        emitter.send(.messageReceived(message))
                     }
                 }
             ]
@@ -169,13 +169,13 @@ public struct AppReducer: Reducer {
             return [
                 Effect { emitter in
                     await emitter.withValue { emitter in
-                        await emitter.send(.setTyping(true))
+                        emitter.send(.setTyping(true))
                     }
                     
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
                     
                     await emitter.withValue { emitter in
-                        await emitter.send(.setTyping(false))
+                        emitter.send(.setTyping(false))
                     }
                 }
             ]
@@ -189,7 +189,7 @@ public struct AppReducer: Reducer {
                         type: .system
                     )
                     await emitter.withValue { emitter in
-                        await emitter.send(.messageReceived(systemMessage))
+                        emitter.send(.messageReceived(systemMessage))
                     }
                 }
             ]
