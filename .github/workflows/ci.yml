@@ -16,8 +16,8 @@ concurrency:
 
 jobs:
   macos:
-    name: macos 15
-    runs-on: macOS 15
+    name: macOS 15
+    runs-on: macOS-15
     strategy:
       matrix:
         config:
@@ -25,12 +25,15 @@ jobs:
           - release
     steps:
       - name: Checkout Package
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: View Swift Version
         run: swift --version
-      - name: Build and Test
-        run: |
-          swift build
-          swift test
+
+      - name: Build Package
+        run: swift build -c ${{ matrix.config }}
+
+      - name: Run Tests
+        run: swift test -c ${{ matrix.config }}
