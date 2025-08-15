@@ -16,7 +16,7 @@ public final class Store<R: Reducer>: @unchecked Sendable where R.State: StateTy
         reducer: R,
         effectStrategy: EffectStrategy = .concurrent,
         enableTimeTravel: Bool = false,
-        @MiddlewareBuilder<R.State, R.Action> middlewares: () -> [AnyMiddleware<R.State, R.Action>]
+        @MiddlewareBuilder<R.State, R.Action> middlewares: @escaping () -> [AnyMiddleware<R.State, R.Action>] = { [] }
     ) {
         self.state = initialState
         self.reducer = reducer
