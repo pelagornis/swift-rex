@@ -229,7 +229,6 @@ import Rex
 
 class ViewController: UIViewController {
     private let store: Store<AppReducer>
-    private var state: AppState
 
     private let label = UILabel()
     private let incrementButton = UIButton(type: .system)
@@ -238,12 +237,10 @@ class ViewController: UIViewController {
 
     init(store: Store<AppReducer>) {
         self.store = store
-        self.state = store.state
         super.init(nibName: nil, bundle: nil)
 
-        store.subscribe { [weak self] newState in
+        store.subscribe { [weak self] _ in
             Task { @MainActor in
-                self?.state = newState
                 self?.updateUI()
             }
         }
@@ -258,8 +255,8 @@ class ViewController: UIViewController {
     }
 
     private func updateUI() {
-        label.text = "Count: \(state.count)"
-        state.isLoading ? spinner.startAnimating() : spinner.stopAnimating()
+        label.text = "Count: \(store.state.count)"
+        store.state.isLoading ? spinner.startAnimating() : spinner.stopAnimating()
     }
 
     @objc private func increment() { store.dispatch(.increment) }
