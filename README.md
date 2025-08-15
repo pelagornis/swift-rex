@@ -9,7 +9,7 @@ Swift-Rex is a modern state management library that supports both SwiftUI and UI
 - 🔌 **Middleware Support**: Extensible system for logging, analytics, debugging, and more
 - 📱 **Cross-Platform**: Support for both SwiftUI and UIKit
 - ⚡ **Performance Optimized**: Efficient state updates and subscription system
-- 🕒 **Time Travel**: State history tracking for debugging
+
 - 📡 **Event Bus**: Global event system for cross-component communication
 
 ## 📦 Installation
@@ -18,7 +18,7 @@ Swift-Rex is a modern state management library that supports both SwiftUI and UI
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-username/swift-rex.git", from: "1.0.0")
+    .package(url: "https://github.com/pelagornis/swift-rex.git", from: "1.0.0")
 ]
 ```
 
@@ -87,12 +87,12 @@ struct AppReducer: Reducer {
         case .increment:
             state.count += 1
             state.lastUpdated = Date()
-            return [.none]
+            return [Effect { _ in }]
 
         case .decrement:
             state.count -= 1
             state.lastUpdated = Date()
-            return [.none]
+            return [Effect { _ in }]
 
         case .loadFromServer:
             state.isLoading = true
@@ -110,7 +110,7 @@ struct AppReducer: Reducer {
             state.count = value
             state.isLoading = false
             state.lastUpdated = Date()
-            return [.none]
+            return [Effect { _ in }]
 
         // ... other actions
         }
@@ -124,9 +124,7 @@ struct AppReducer: Reducer {
 let store = Store(
     initialState: AppState(),
     reducer: AppReducer()
-) {
-    LoggingMiddleware()
-}
+)
 ```
 
 ## 📱 SwiftUI Integration
@@ -163,14 +161,9 @@ struct ContentView: View {
 // Initialize Store in App
 @main
 struct MyApp: App {
-    let store = Store(
-        initialState: AppState(),
-        reducer: AppReducer()
-    )
-
     var body: some Scene {
         WindowGroup {
-            ContentView(store: ObservableStore(store: store))
+            ContentView()
         }
     }
 }
@@ -186,7 +179,7 @@ class AppStore: ObservableObject {
 
     init(store: Store<AppReducer>) {
         self.store = store
-        self.state = store.state
+        self.state = store.getInitialState()
 
         store.subscribe { [weak self] newState in
             Task { @MainActor in
@@ -229,8 +222,11 @@ class ViewController: UIViewController {
     private let decrementButton = UIButton(type: .system)
     private let spinner = UIActivityIndicatorView(style: .medium)
 
-    init(store: Store<AppReducer>) {
-        self.store = store
+    init() {
+        self.store = Store(
+            initialState: AppState(),
+            reducer: AppReducer()
+        )
         super.init(nibName: nil, bundle: nil)
 
         store.subscribe { [weak self] _ in
@@ -258,22 +254,18 @@ class ViewController: UIViewController {
     @objc private func load() { store.dispatch(.loadFromServer) }
 }
 
-// Initialize Store in AppDelegate
-@main
-class AppDelegate: UIResponder, UIApplicationDelegate {
+// Initialize Store in SceneDelegate
+final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        let store = Store(
-            initialState: AppState(),
-            reducer: AppReducer()
-        )
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        guard let ws = (scene as? UIWindowScene) else { return }
+        window = UIWindow(windowScene: ws)
 
-        window = UIWindow(frame: UIScreen.main.bounds)
-        window?.rootViewController = ViewController(store: store)
+        let viewController = ViewController()
+        let navigationController = UINavigationController(rootViewController: viewController)
+        window?.rootViewController = navigationController
         window?.makeKeyAndVisible()
-
-        return true
     }
 }
 ```
@@ -287,26 +279,26 @@ Effect system for handling asynchronous operations and side effects:
 Effect { emitter in
     let data = try await URLSession.shared.data(from: url)
     let response = try JSONDecoder().decode(Response.self, from: data.0)
-    await emitter.withValue { emitter in
-        await emitter.send(.dataLoaded(response))
-    }
+            await emitter.withValue { emitter in
+            emitter.send(.dataLoaded(response))
+        }
 }
 
 // Timer
 Effect { emitter in
     for await _ in Timer.publish(every: 1, on: .main, in: .common).autoconnect() {
         await emitter.withValue { emitter in
-            await emitter.send(.timerTick)
+            emitter.send(.timerTick)
         }
     }
 }
 
 // Send multiple actions
 Effect { emitter in
-    await emitter.withValue { emitter in
-        await emitter.send(.action1)
-        await emitter.send(.action2)
-    }
+            await emitter.withValue { emitter in
+            emitter.send(.action1)
+            emitter.send(.action2)
+        }
 }
 ```
 
@@ -330,14 +322,15 @@ struct AnalyticsMiddleware: Middleware {
     }
 }
 
-// Add middleware to Store
+// Add middleware to Store (optional)
 let store = Store(
     initialState: AppState(),
-    reducer: AppReducer()
-) {
-    LoggingMiddleware()
-    AnalyticsMiddleware()
-}
+    reducer: AppReducer(),
+    middlewares: [
+        LoggingMiddleware(),
+        AnalyticsMiddleware()
+    ]
+)
 ```
 
 ## 📡 Event Bus
@@ -368,12 +361,12 @@ store.getEventBus().publishNavigation(route: "/profile", parameters: ["userId": 
 store.getEventBus().publishUserAction(action: "button_tap", screen: "login", metadata: ["button": "login"])
 
 // Subscribing to events
-let cancellable = store.getEventBus().subscribe(to: UserLoggedInEvent.self) { event in
+store.getEventBus().subscribe(to: UserLoggedInEvent.self) { event in
     print("User logged in: \(event.userId)")
 }
 
 // Subscribe with filter
-let errorCancellable = store.getEventBus().subscribe(
+store.getEventBus().subscribe(
     to: NetworkErrorEvent.self,
     where: { $0.code >= 500 },
     handler: { event in
@@ -382,7 +375,7 @@ let errorCancellable = store.getEventBus().subscribe(
 )
 
 // Subscribe to all events
-let allEventsCancellable = store.getEventBus().subscribe { event in
+store.getEventBus().subscribe { event in
     print("Event: \(event)")
 }
 ```
@@ -401,7 +394,7 @@ let allEventsCancellable = store.getEventBus().subscribe { event in
 ```swift
 struct ContentView: View {
     @ObservedObject var store: AppStore
-    @State private var cancellables: Set<AnyCancellable> = []
+
     @State private var eventLog: [String] = []
 
     var body: some View {
@@ -446,7 +439,6 @@ struct ContentView: View {
                     eventLog.removeLast()
                 }
             }
-            .store(in: &cancellables)
 
             // Subscribe to user events
             store.getEventBus().subscribe(to: UserEvent.self) { event in
@@ -455,7 +447,6 @@ struct ContentView: View {
                     eventLog.removeLast()
                 }
             }
-            .store(in: &cancellables)
         }
     }
 }
@@ -466,7 +457,7 @@ struct ContentView: View {
 ```swift
 class ViewController: UIViewController {
     private let store: Store<AppReducer>
-    private var cancellables: Set<AnyCancellable> = []
+
     private let logTextView = UITextView()
 
     override func viewDidLoad() {
@@ -482,13 +473,11 @@ class ViewController: UIViewController {
                 self.addLog("🧭 Navigation: \(event.route)")
                 self.navigate(to: event.route, parameters: event.parameters)
             }
-            .store(in: &cancellables)
 
             // Subscribe to user action events
             store.getEventBus().subscribe(to: UserActionEvent.self) { event in
                 self.addLog("👆 Action: \(event.action) on \(event.screen)")
             }
-            .store(in: &cancellables)
         }
     }
 
