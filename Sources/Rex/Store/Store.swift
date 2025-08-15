@@ -1,14 +1,13 @@
 import Foundation
-import Combine
 
 public final class Store<R: Reducer>: Sendable {
     private let stateActor: StateActor<R.State>
-    private let cancellablesActor: CancellablesActor
     private let subscribersActor: SubscribersActor<R.State>
     private let reducer: R
     private let middlewares: [AnyMiddleware<R.State, R.Action>]
     private let eventBus: EventBus
     private let lock = NSLock()
+    private let initialState: R.State
 
     public init(
         initialState: R.State,
@@ -17,17 +16,21 @@ public final class Store<R: Reducer>: Sendable {
         eventBus: EventBus = EventBus()
     ) {
         self.stateActor = StateActor(initialState)
-        self.cancellablesActor = CancellablesActor()
         self.subscribersActor = SubscribersActor()
         self.reducer = reducer
         self.middlewares = middlewares()
         self.eventBus = eventBus
+        self.initialState = initialState
     }
 
     public var state: R.State {
         get async {
             await stateActor.state
         }
+    }
+
+    public func getInitialState() -> R.State {
+        return initialState
     }
 
     public func dispatch(_ action: R.Action) {
@@ -96,18 +99,6 @@ private actor StateActor<State> {
 
     func setState(_ newState: State) {
         state = newState
-    }
-}
-
-private actor CancellablesActor {
-    var cancellables: Set<AnyCancellable> = []
-
-    func add(_ cancellable: AnyCancellable) {
-        cancellables.insert(cancellable)
-    }
-
-    func removeAll() {
-        cancellables.removeAll()
     }
 }
 
