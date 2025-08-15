@@ -6,21 +6,24 @@ public enum EffectStrategy: Sendable {
 
 public actor EffectQueue<Action: ActionType> {
     private let strategy: EffectStrategy
-    private let emitter: ActorIsolated<EffectEmitter<Action>>
+    private let dispatch: @Sendable (Action) -> Void
 
     private var tasks: [Task<Void, Never>] = []
     private var latestTasks: [String: Task<Void, Never>] = [:]
 
-    public init(strategy: EffectStrategy = .concurrent, emitter: ActorIsolated<EffectEmitter<Action>>) {
+    public init(strategy: EffectStrategy = .concurrent, dispatch: @escaping @Sendable (Action) -> Void) {
         self.strategy = strategy
-        self.emitter = emitter
+        self.dispatch = dispatch
     }
 
     public func enqueue(_ effect: Effect<Action>, key: String? = nil) {
+        let dispatch = self.dispatch
+        let effect = effect
+        
         switch strategy {
         case .concurrent:
             let task = Task {
-                await effect.run(emitter)
+                await effect.run(dispatch: dispatch)
             }
             tasks.append(task)
 
@@ -31,14 +34,14 @@ public actor EffectQueue<Action: ActionType> {
                 if let previousTask = previousTask {
                     _ = await previousTask.result
                 }
-                await effect.run(emitter)
+                await effect.run(dispatch: dispatch)
             }
             tasks.append(task)
 
         case .latestOnly:
             guard let key = key else {
                 let task = Task {
-                    await effect.run(emitter)
+                    await effect.run(dispatch: dispatch)
                 }
                 tasks.append(task)
                 return
@@ -49,7 +52,7 @@ public actor EffectQueue<Action: ActionType> {
             }
 
             let task = Task {
-                await effect.run(emitter)
+                await effect.run(dispatch: dispatch)
             }
             latestTasks[key] = task
         }

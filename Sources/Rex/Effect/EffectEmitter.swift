@@ -1,15 +1,17 @@
 import Foundation
 
-public actor EffectEmitter<Action: ActionType> {
-    private var sendAction: ((Action) -> Void)?
+public struct EffectEmitter<Action>: Sendable {
+    private let dispatch: @Sendable (Action) -> Void
 
-    public init() {}
-
-    public func send(_ action: Action) {
-        sendAction?(action)
+    init(dispatch: @escaping @Sendable (Action) -> Void) {
+        self.dispatch = dispatch
     }
 
-    public func setSendAction(_ sendAction: @escaping (Action) -> Void) {
-        self.sendAction = sendAction
+    public func send(_ action: Action) {
+        dispatch(action)
+    }
+
+    public func withValue(_ operation: @Sendable (EffectEmitter<Action>) async -> Void) async {
+        await operation(self)
     }
 }
