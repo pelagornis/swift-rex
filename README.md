@@ -1,5 +1,11 @@
 # Swift-Rex
 
+![Official](https://badge.pelagornis.com/official.svg)
+[![Swift Version](https://img.shields.io/badge/Swift-6.1+-orange.svg)](https://swift.org)
+[![iOS Version](https://img.shields.io/badge/iOS-13.0+-blue.svg)](https://developer.apple.com/ios/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Swift Package Manager](https://img.shields.io/badge/SwiftPM-compatible-brightgreen.svg)](https://swift.org/package-manager)
+
 Swift-Rex is a modern state management library that supports both SwiftUI and UIKit. Inspired by TCA (The Composable Architecture) and Redux, it provides a simple and intuitive API for managing application state.
 
 ## 🚀 Key Features
@@ -558,6 +564,6 @@ The project includes example apps for both SwiftUI and UIKit:
 
 Run the example apps to see all Swift-Rex features in action.
 
-## 📄 License
+## License
 
-MIT License - see the [LICENSE](LICENSE) file for details.
+**swift-rex** is under MIT license. See the [LICENSE](LICENSE) file for more info.
