@@ -79,22 +79,16 @@ jobs:
                 git checkout -f "$tag"
               fi
 
-              # Check if Swift supports generate-documentation
-              if swift package --help | grep -q "generate-documentation"; then
-                swift package \
-                  --allow-writing-to-directory docs-out/"$tag" \
-                  generate-documentation \
-                  --target Rex \
-                  --output-path docs-out/"$tag" \
-                  --transform-for-static-hosting \
-                  --hosting-base-path /swift-rex/"$tag" \
-                  && echo "✅ Documentation generated for $tag release." \
-                  || echo "⚠️ Documentation failed for $tag."
-              else
-                echo "⚠️ Swift version does not support generate-documentation, skipping $tag"
-                echo "Current Swift version:"
-                swift --version
-              fi
+              # Use Swift Docc Plugin
+              swift package \
+                --allow-writing-to-directory docs-out/"$tag" \
+                generate-documentation \
+                --target Rex \
+                --output-path docs-out/"$tag" \
+                --transform-for-static-hosting \
+                --hosting-base-path /swift-rex/"$tag" \
+                && echo "✅ Documentation generated for $tag release." \
+                || echo "⚠️ Documentation failed for $tag."
             fi
           done
 
