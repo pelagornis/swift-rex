@@ -7,9 +7,7 @@ struct ExampleSwiftUIApp: App {
     let store = Store(
         initialState: AppState(),
         reducer: AppReducer()
-    ) {
-        LoggingMiddleware()
-    }
+    )
 
     var body: some Scene {
         WindowGroup {
