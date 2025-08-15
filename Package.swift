@@ -20,9 +20,6 @@ let package = Package(
             ]
         )
     ],
-    dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-docc", from: "swift-6.1.1-RELEASE")
-    ],
     targets: [
         .target(name: "Rex"),
         .testTarget(
