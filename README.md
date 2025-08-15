@@ -28,6 +28,12 @@ dependencies: [
 ]
 ```
 
+## 📖 Documentation
+
+The documentation for releases and `main` are available here:
+
+- [`main`](https://pelagornis.github.io/swift-rex/main/documentation/rex/)
+
 ## 🎯 Basic Usage
 
 ### 1. Define State
