@@ -4,7 +4,7 @@ import Rex
 @MainActor
 class AppStore: ObservableObject {
     @Published var state: AppState
-    private let store: Store<AppReducer>
+    let store: Store<AppReducer>
 
     init(store: Store<AppReducer>) {
         self.store = store
@@ -19,5 +19,9 @@ class AppStore: ObservableObject {
 
     func send(_ action: AppAction) {
         store.dispatch(action)
+    }
+    
+    func getEventBus() -> EventBus {
+        return store.getEventBus()
     }
 }

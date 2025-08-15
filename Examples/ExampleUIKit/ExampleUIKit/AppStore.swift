@@ -2,7 +2,7 @@ import SwiftUI
 import Rex
 
 @MainActor
-class AppStore: ObservableObject {
+public class AppStore: ObservableObject {
     @Published var state: AppState
     private let store: Store<AppReducer>
 
@@ -17,7 +17,7 @@ class AppStore: ObservableObject {
         }
     }
 
-    func send(_ action: AppAction) {
+    public func send(_ action: AppAction) {
         store.dispatch(action)
     }
 }
