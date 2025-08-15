@@ -1,8 +1,8 @@
 # Swift-Rex
 
-Swift-Rex is a modern state management library that supports both SwiftUI and UIKit. Inspired by TCA (The Composable Architecture) and Redux, it provides a simple and intuitive API.
+Swift-Rex is a modern state management library that supports both SwiftUI and UIKit. Inspired by TCA (The Composable Architecture) and Redux, it provides a simple and intuitive API for managing application state.
 
-## Key Features
+## 🚀 Key Features
 
 - 🎯 **Simple State Management**: Store, Reducer, Action pattern
 - 🔄 **Async Processing**: Effect system for handling side effects
@@ -10,8 +10,9 @@ Swift-Rex is a modern state management library that supports both SwiftUI and UI
 - 📱 **Cross-Platform**: Support for both SwiftUI and UIKit
 - ⚡ **Performance Optimized**: Efficient state updates and subscription system
 - 🕒 **Time Travel**: State history tracking for debugging
+- 📡 **Event Bus**: Global event system for cross-component communication
 
-## Installation
+## 📦 Installation
 
 ### Swift Package Manager
 
@@ -21,7 +22,7 @@ dependencies: [
 ]
 ```
 
-## Basic Usage
+## 🎯 Basic Usage
 
 ### 1. Define State
 
@@ -128,7 +129,7 @@ let store = Store(
 }
 ```
 
-## SwiftUI Integration
+## 📱 SwiftUI Integration
 
 ### Using ObservableStore
 
@@ -156,14 +157,6 @@ struct ContentView: View {
         }
         .padding()
         .environmentObject(store)
-        .loading(store) {
-            ProgressView("Loading...")
-        }
-        .errorAlert(
-            store,
-            errorKeyPath: \.errorMessage,
-            dismissAction: .clearError
-        )
     }
 }
 
@@ -183,43 +176,44 @@ struct MyApp: App {
 }
 ```
 
-### SwiftUI View Modifiers
+### Custom AppStore Usage
 
 ```swift
-// Show loading state
-.loading(store) {
-    ProgressView("Loading...")
+@MainActor
+class AppStore: ObservableObject {
+    @Published var state: AppState
+    let store: Store<AppReducer>
+
+    init(store: Store<AppReducer>) {
+        self.store = store
+        self.state = store.state
+
+        store.subscribe { [weak self] newState in
+            Task { @MainActor in
+                self?.state = newState
+            }
+        }
+    }
+
+    func send(_ action: AppAction) {
+        store.dispatch(action)
+    }
+
+    func getEventBus() -> EventBus {
+        return store.getEventBus()
+    }
 }
 
-// Custom loading state
-.loading(store, keyPath: \.isLoading) {
-    CustomLoadingView()
-}
+struct ContentView: View {
+    @ObservedObject var store: AppStore
 
-// Error alert
-.errorAlert(
-    store,
-    errorKeyPath: \.errorMessage,
-    dismissAction: .clearError
-)
-
-// Conditional rendering
-.if(store.state.isLoading) { view in
-    view.overlay(ProgressView())
-}
-
-// Binding
-Picker("Theme", selection: store.binding(
-    for: \.theme,
-    action: { .setTheme($0) }
-)) {
-    ForEach(AppState.Theme.allCases, id: \.self) { theme in
-        Text(theme.rawValue.capitalized).tag(theme)
+    var body: some View {
+        // UI implementation
     }
 }
 ```
 
-## UIKit Integration
+## 🎨 UIKit Integration
 
 In UIKit, you can use `Store` directly for a simple implementation:
 
@@ -284,7 +278,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
-## Effects
+## 🔄 Effects
 
 Effect system for handling asynchronous operations and side effects:
 
@@ -316,7 +310,7 @@ Effect { emitter in
 }
 ```
 
-## Middleware
+## 🔌 Middleware
 
 Middleware system for logging, analytics, debugging, and more:
 
@@ -346,6 +340,235 @@ let store = Store(
 }
 ```
 
-## License
+## 📡 Event Bus
+
+EventBus provides a global event system for handling cross-component communication and side effects. Each Store has its own EventBus instance for isolated event handling.
+
+### Basic Usage
+
+```swift
+// Custom events
+struct UserLoggedInEvent: EventType {
+    let userId: String
+    let timestamp: Date
+}
+
+struct NetworkErrorEvent: EventType {
+    let error: String
+    let code: Int
+}
+
+// Publishing events
+store.getEventBus().publish(UserLoggedInEvent(userId: "123"))
+store.getEventBus().publish(NetworkErrorEvent(error: "Connection failed", code: 500))
+
+// Using convenience methods
+store.getEventBus().publishAppEvent(name: "user_action", data: ["action": "login"])
+store.getEventBus().publishNavigation(route: "/profile", parameters: ["userId": "123"])
+store.getEventBus().publishUserAction(action: "button_tap", screen: "login", metadata: ["button": "login"])
+
+// Subscribing to events
+let cancellable = store.getEventBus().subscribe(to: UserLoggedInEvent.self) { event in
+    print("User logged in: \(event.userId)")
+}
+
+// Subscribe with filter
+let errorCancellable = store.getEventBus().subscribe(
+    to: NetworkErrorEvent.self,
+    where: { $0.code >= 500 },
+    handler: { event in
+        print("Critical error: \(event.error)")
+    }
+)
+
+// Subscribe to all events
+let allEventsCancellable = store.getEventBus().subscribe { event in
+    print("Event: \(event)")
+}
+```
+
+### Event Bus Use Cases
+
+1. **User Authentication**: Handle login/logout events across the app
+2. **Navigation**: Manage navigation state and deep linking
+3. **Error Handling**: Global error management and user notifications
+4. **Analytics**: Track user actions and app usage
+5. **Cross-Component Communication**: Communicate between unrelated components
+6. **Background Tasks**: Handle app lifecycle and background processing
+
+### Event Bus in SwiftUI
+
+```swift
+struct ContentView: View {
+    @ObservedObject var store: AppStore
+    @State private var cancellables: Set<AnyCancellable> = []
+    @State private var eventLog: [String] = []
+
+    var body: some View {
+        VStack {
+            // Event log display
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 4) {
+                    ForEach(eventLog, id: \.self) { log in
+                        Text(log)
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(6)
+                    }
+                }
+            }
+            .frame(maxHeight: 200)
+
+            // Event publishing buttons
+            Button("Send Message") {
+                Task { @MainActor in
+                    store.getEventBus().publishChatEvent(
+                        type: "user_message",
+                        message: "Hello from SwiftUI!",
+                        sender: "User"
+                    )
+                }
+            }
+        }
+        .onAppear {
+            setupEventListeners()
+        }
+    }
+
+    private func setupEventListeners() {
+        Task { @MainActor in
+            // Subscribe to chat events
+            store.getEventBus().subscribe(to: ChatEvent.self) { event in
+                eventLog.insert("💬 \(event.type): \(event.message)", at: 0)
+                if eventLog.count > 20 {
+                    eventLog.removeLast()
+                }
+            }
+            .store(in: &cancellables)
+
+            // Subscribe to user events
+            store.getEventBus().subscribe(to: UserEvent.self) { event in
+                eventLog.insert("👤 \(event.action): \(event.username)", at: 0)
+                if eventLog.count > 20 {
+                    eventLog.removeLast()
+                }
+            }
+            .store(in: &cancellables)
+        }
+    }
+}
+```
+
+### Event Bus in UIKit
+
+```swift
+class ViewController: UIViewController {
+    private let store: Store<AppReducer>
+    private var cancellables: Set<AnyCancellable> = []
+    private let logTextView = UITextView()
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupUI()
+        setupEventListeners()
+    }
+
+    private func setupEventListeners() {
+        Task { @MainActor in
+            // Subscribe to navigation events
+            store.getEventBus().subscribe(to: NavigationEvent.self) { event in
+                self.addLog("🧭 Navigation: \(event.route)")
+                self.navigate(to: event.route, parameters: event.parameters)
+            }
+            .store(in: &cancellables)
+
+            // Subscribe to user action events
+            store.getEventBus().subscribe(to: UserActionEvent.self) { event in
+                self.addLog("👆 Action: \(event.action) on \(event.screen)")
+            }
+            .store(in: &cancellables)
+        }
+    }
+
+    private func addLog(_ message: String) {
+        let timestamp = Date().formatted(date: .omitted, time: .standard)
+        let logEntry = "[\(timestamp)] \(message)\n"
+        logTextView.text += logEntry
+    }
+
+    @objc private func sendEvent() {
+        Task { @MainActor in
+            store.getEventBus().publishAppEvent(
+                name: "button_pressed",
+                data: ["button": "send_event"]
+            )
+        }
+    }
+}
+```
+
+### Multi-Page Event Bus Communication
+
+```swift
+// First page (ContentView)
+struct ContentView: View {
+    @ObservedObject var store: AppStore
+    @State private var showingSecondPage = false
+
+    var body: some View {
+        VStack {
+            Button("Go to Second Page") {
+                showingSecondPage = true
+            }
+        }
+        .sheet(isPresented: $showingSecondPage) {
+            SecondView(store: store)
+        }
+    }
+}
+
+// Second page (SecondView)
+struct SecondView: View {
+    @ObservedObject var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack {
+            Button("Send Message to First Page") {
+                Task { @MainActor in
+                    store.getEventBus().publishChatEvent(
+                        type: "message_from_second",
+                        message: "Hello from Second Page!",
+                        sender: "SecondView"
+                    )
+                }
+            }
+
+            Button("Back") {
+                Task { @MainActor in
+                    store.getEventBus().publishSystemEvent(
+                        event: "navigation",
+                        details: ["action": "back_to_first"]
+                    )
+                }
+                dismiss()
+            }
+        }
+    }
+}
+```
+
+## 📋 Example Apps
+
+The project includes example apps for both SwiftUI and UIKit:
+
+- **SwiftUI Example**: Chat app demonstrating Event Bus functionality
+- **UIKit Example**: Game app demonstrating multi-page Event Bus communication
+
+Run the example apps to see all Swift-Rex features in action.
+
+## 📄 License
 
 MIT License - see the [LICENSE](LICENSE) file for details.
