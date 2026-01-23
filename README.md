@@ -15,8 +15,8 @@ Swift-Rex is a modern state management library that supports both SwiftUI and UI
 - 🔌 **Middleware Support**: Extensible system for logging, analytics, debugging, and more
 - 📱 **Cross-Platform**: Support for both SwiftUI and UIKit
 - ⚡ **Performance Optimized**: Efficient state updates and subscription system
-
-- 📡 **Event Bus**: Global event system for cross-component communication
+- 🛡️ **Thread-Safe**: Actor-based architecture ensures safe concurrent access
+- 📡 **Event Bus**: Thread-safe event system with guaranteed sequential processing
 
 ## 📦 Installation
 
@@ -137,7 +137,27 @@ let store = Store(
     initialState: AppState(),
     reducer: AppReducer()
 )
+
+// With middleware (optional)
+let store = Store(
+    initialState: AppState(),
+    reducer: AppReducer(),
+    middlewares: {
+        [
+            LoggingMiddleware(),
+            AnalyticsMiddleware()
+        ]
+    }
+)
 ```
+
+### 5. Thread Safety
+
+Swift-Rex uses Swift actors to ensure thread-safe state management. All state updates are processed sequentially to prevent race conditions:
+
+- **Sequential Action Processing**: Actions are processed one at a time through the `DispatchActor`
+- **Guaranteed Order**: State updates maintain order even with concurrent dispatches
+- **Event Bus Queue**: Events are queued and processed sequentially to prevent loss
 
 ## 📱 SwiftUI Integration
 
@@ -291,9 +311,9 @@ Effect system for handling asynchronous operations and side effects:
 Effect { emitter in
     let data = try await URLSession.shared.data(from: url)
     let response = try JSONDecoder().decode(Response.self, from: data.0)
-            await emitter.withValue { emitter in
-            emitter.send(.dataLoaded(response))
-        }
+    await emitter.withValue { emitter in
+        emitter.send(.dataLoaded(response))
+    }
 }
 
 // Timer
@@ -307,11 +327,18 @@ Effect { emitter in
 
 // Send multiple actions
 Effect { emitter in
-            await emitter.withValue { emitter in
-            emitter.send(.action1)
-            emitter.send(.action2)
-        }
+    await emitter.withValue { emitter in
+        emitter.send(.action1)
+        emitter.send(.action2)
+    }
 }
+
+// Built-in effect helpers
+Effect.just(.increment)                    // Dispatch single action immediately
+Effect.many(.action1, .action2, .action3)  // Dispatch multiple actions
+Effect.delayed(.action, delay: 1.0)        // Dispatch after delay
+Effect.sequence(.action1, .action2)        // Dispatch in sequence
+Effect.concurrent(.action1, .action2)      // Dispatch concurrently
 ```
 
 ## 🔌 Middleware
@@ -338,16 +365,25 @@ struct AnalyticsMiddleware: Middleware {
 let store = Store(
     initialState: AppState(),
     reducer: AppReducer(),
-    middlewares: [
-        LoggingMiddleware(),
-        AnalyticsMiddleware()
-    ]
+    middlewares: {
+        [
+            LoggingMiddleware(),
+            AnalyticsMiddleware()
+        ]
+    }
 )
 ```
 
 ## 📡 Event Bus
 
-EventBus provides a global event system for handling cross-component communication and side effects. Each Store has its own EventBus instance for isolated event handling.
+EventBus provides a thread-safe global event system for handling cross-component communication and side effects. Each Store has its own EventBus instance for isolated event handling.
+
+### Key Features
+
+- **Thread-Safe**: Built on Swift actors for safe concurrent access
+- **Sequential Processing**: Events are processed in order to prevent loss and ensure consistency
+- **Type-Safe Subscriptions**: Subscribe to specific event types with compile-time safety
+- **Filtered Subscriptions**: Subscribe to events matching specific conditions
 
 ### Basic Usage
 
@@ -364,13 +400,11 @@ struct NetworkErrorEvent: EventType {
 }
 
 // Publishing events
-store.getEventBus().publish(UserLoggedInEvent(userId: "123"))
+store.getEventBus().publish(UserLoggedInEvent(userId: "123", timestamp: Date()))
 store.getEventBus().publish(NetworkErrorEvent(error: "Connection failed", code: 500))
 
-// Using convenience methods
-store.getEventBus().publishAppEvent(name: "user_action", data: ["action": "login"])
-store.getEventBus().publishNavigation(route: "/profile", parameters: ["userId": "123"])
-store.getEventBus().publishUserAction(action: "button_tap", screen: "login", metadata: ["button": "login"])
+// Events are queued and processed sequentially to ensure order and prevent loss
+// Multiple rapid publishes will be processed one at a time
 
 // Subscribing to events
 store.getEventBus().subscribe(to: UserLoggedInEvent.self) { event in
@@ -429,10 +463,13 @@ struct ContentView: View {
             // Event publishing buttons
             Button("Send Message") {
                 Task { @MainActor in
-                    store.getEventBus().publishChatEvent(
-                        type: "user_message",
-                        message: "Hello from SwiftUI!",
-                        sender: "User"
+                    // Publish custom event
+                    store.getEventBus().publish(
+                        ChatEvent(
+                            type: "user_message",
+                            message: "Hello from SwiftUI!",
+                            sender: "User"
+                        )
                     )
                 }
             }
@@ -446,17 +483,21 @@ struct ContentView: View {
         Task { @MainActor in
             // Subscribe to chat events
             store.getEventBus().subscribe(to: ChatEvent.self) { event in
-                eventLog.insert("💬 \(event.type): \(event.message)", at: 0)
-                if eventLog.count > 20 {
-                    eventLog.removeLast()
+                Task { @MainActor in
+                    eventLog.insert("💬 \(event.type): \(event.message)", at: 0)
+                    if eventLog.count > 20 {
+                        eventLog.removeLast()
+                    }
                 }
             }
 
             // Subscribe to user events
             store.getEventBus().subscribe(to: UserEvent.self) { event in
-                eventLog.insert("👤 \(event.action): \(event.username)", at: 0)
-                if eventLog.count > 20 {
-                    eventLog.removeLast()
+                Task { @MainActor in
+                    eventLog.insert("👤 \(event.action): \(event.username)", at: 0)
+                    if eventLog.count > 20 {
+                        eventLog.removeLast()
+                    }
                 }
             }
         }
@@ -481,14 +522,18 @@ class ViewController: UIViewController {
     private func setupEventListeners() {
         Task { @MainActor in
             // Subscribe to navigation events
-            store.getEventBus().subscribe(to: NavigationEvent.self) { event in
-                self.addLog("🧭 Navigation: \(event.route)")
-                self.navigate(to: event.route, parameters: event.parameters)
+            store.getEventBus().subscribe(to: NavigationEvent.self) { [weak self] event in
+                DispatchQueue.main.async {
+                    self?.addLog("🧭 Navigation: \(event.route)")
+                    self?.navigate(to: event.route, parameters: event.parameters)
+                }
             }
 
             // Subscribe to user action events
-            store.getEventBus().subscribe(to: UserActionEvent.self) { event in
-                self.addLog("👆 Action: \(event.action) on \(event.screen)")
+            store.getEventBus().subscribe(to: UserActionEvent.self) { [weak self] event in
+                DispatchQueue.main.async {
+                    self?.addLog("👆 Action: \(event.action) on \(event.screen)")
+                }
             }
         }
     }
@@ -501,9 +546,11 @@ class ViewController: UIViewController {
 
     @objc private func sendEvent() {
         Task { @MainActor in
-            store.getEventBus().publishAppEvent(
-                name: "button_pressed",
-                data: ["button": "send_event"]
+            store.getEventBus().publish(
+                AppEvent(
+                    name: "button_pressed",
+                    data: ["button": "send_event"]
+                )
             )
         }
     }
@@ -539,19 +586,23 @@ struct SecondView: View {
         VStack {
             Button("Send Message to First Page") {
                 Task { @MainActor in
-                    store.getEventBus().publishChatEvent(
-                        type: "message_from_second",
-                        message: "Hello from Second Page!",
-                        sender: "SecondView"
+                    store.getEventBus().publish(
+                        ChatEvent(
+                            type: "message_from_second",
+                            message: "Hello from Second Page!",
+                            sender: "SecondView"
+                        )
                     )
                 }
             }
 
             Button("Back") {
                 Task { @MainActor in
-                    store.getEventBus().publishSystemEvent(
-                        event: "navigation",
-                        details: ["action": "back_to_first"]
+                    store.getEventBus().publish(
+                        SystemEvent(
+                            event: "navigation",
+                            details: ["action": "back_to_first"]
+                        )
                     )
                 }
                 dismiss()
