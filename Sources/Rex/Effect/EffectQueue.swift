@@ -1,9 +1,27 @@
+/// Defines the strategy for executing effects in the queue.
 public enum EffectStrategy: Sendable {
+    /// Effects are executed sequentially, one after another.
     case sequential
+    /// Effects are executed concurrently, all at the same time.
     case concurrent
+    /// Only the latest effect with the same key is executed, canceling previous ones.
     case latestOnly
 }
 
+/// An actor that manages a queue of effects with different execution strategies.
+///
+/// The EffectQueue provides control over how effects are executed, allowing for
+/// sequential, concurrent, or latest-only execution patterns.
+///
+/// ## Example
+/// ```swift
+/// let queue = EffectQueue<AppAction>(strategy: .sequential) { action in
+///     store.dispatch(action)
+/// }
+///
+/// queue.enqueue(Effect.just(.increment))
+/// queue.enqueue(Effect.just(.decrement))
+/// ```
 public actor EffectQueue<Action: ActionType> {
     private let strategy: EffectStrategy
     private let dispatch: @Sendable (Action) -> Void
@@ -11,11 +29,26 @@ public actor EffectQueue<Action: ActionType> {
     private var tasks: [Task<Void, Never>] = []
     private var latestTasks: [String: Task<Void, Never>] = [:]
 
+    /// Creates a new EffectQueue with the specified strategy.
+    ///
+    /// - Parameters:
+    ///   - strategy: The execution strategy for effects. Defaults to `.concurrent`.
+    ///   - dispatch: A closure that dispatches actions returned by effects.
     public init(strategy: EffectStrategy = .concurrent, dispatch: @escaping @Sendable (Action) -> Void) {
         self.strategy = strategy
         self.dispatch = dispatch
     }
 
+    /// Adds an effect to the queue for execution.
+    ///
+    /// The effect will be executed according to the queue's strategy:
+    /// - `.concurrent`: Executes immediately alongside other effects
+    /// - `.sequential`: Waits for previous effects to complete
+    /// - `.latestOnly`: Cancels previous effects with the same key before executing
+    ///
+    /// - Parameters:
+    ///   - effect: The effect to enqueue.
+    ///   - key: An optional key for `.latestOnly` strategy. Effects with the same key will cancel previous ones.
     public func enqueue(_ effect: Effect<Action>, key: String? = nil) {
         let dispatch = self.dispatch
         let effect = effect
@@ -28,7 +61,7 @@ public actor EffectQueue<Action: ActionType> {
             tasks.append(task)
 
         case .sequential:
-            // 이전 작업이 끝날 때까지 대기 후 실행
+            // Wait for previous task to complete before executing
             let previousTask = tasks.last
             let task = Task {
                 if let previousTask = previousTask {
@@ -58,6 +91,9 @@ public actor EffectQueue<Action: ActionType> {
         }
     }
 
+    /// Cancels all pending and running effects in the queue.
+    ///
+    /// This method cancels all tasks in both the regular task queue and the latest-only task map.
     public func cancelAll() {
         for task in tasks {
             task.cancel()
