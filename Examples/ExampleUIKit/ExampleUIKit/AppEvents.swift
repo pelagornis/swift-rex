@@ -37,17 +37,14 @@ public struct UserActionEvent: EventType {
 // MARK: - Event Bus Extensions
 public extension EventBus {
     // Convenience methods for app events
-    @MainActor
     func publishAppEvent(name: String, data: [String: String] = [:]) {
         publish(AppEvent(name: name, data: data))
     }
     
-    @MainActor
     func publishNavigation(route: String, parameters: [String: String] = [:]) {
         publish(NavigationEvent(route: route, parameters: parameters))
     }
     
-    @MainActor
     func publishUserAction(action: String, screen: String, metadata: [String: String] = [:]) {
         publish(UserActionEvent(action: action, screen: screen, metadata: metadata))
     }

@@ -106,48 +106,68 @@ struct ContentView: View {
     
     private func setupEventListeners() {
         Task { @MainActor in
-            // Listen to all events
+            // Listen to all events (except SystemEvent which is handled separately)
             store.getEventBus().subscribe { event in
-                let eventString = "\(type(of: event)) at \(Date().formatted(date: .omitted, time: .standard))"
-                eventLog.insert(eventString, at: 0)
-                if eventLog.count > 20 {
-                    eventLog.removeLast()
+                Task { @MainActor in
+                    // SystemEvent는 별도 핸들러에서 처리하므로 제외
+                    if event is SystemEvent {
+                        return
+                    }
+                    let eventString = "\(type(of: event)) at \(Date().formatted(date: .omitted, time: .standard))"
+                    eventLog.insert(eventString, at: 0)
+                    if eventLog.count > 20 {
+                        eventLog.removeLast()
+                    }
                 }
             }
             
             // Listen to chat events
             store.getEventBus().subscribe(to: ChatEvent.self) { event in
-                print("Chat Event: \(event.type) from \(event.sender)")
-                
-                // Handle events from second page
-                if event.type == "message_from_second" {
-                    eventLog.insert("💬 Message from Second Page: \(event.message)", at: 0)
-                    if eventLog.count > 20 {
-                        eventLog.removeLast()
+                Task { @MainActor in
+                    print("Chat Event: \(event.type) from \(event.sender)")
+                    
+                    // Handle events from second page
+                    if event.type == "message_from_second" {
+                        eventLog.insert("💬 Message from Second Page: \(event.message)", at: 0)
+                        if eventLog.count > 20 {
+                            eventLog.removeLast()
+                        }
                     }
                 }
             }
             
             // Listen to user events
             store.getEventBus().subscribe(to: UserEvent.self) { event in
-                print("User Event: \(event.action) by \(event.username)")
-                
-                // Handle events from second page
-                if event.action == "user_added" {
-                    eventLog.insert("👤 User added from Second Page: \(event.username)", at: 0)
-                    if eventLog.count > 20 {
-                        eventLog.removeLast()
+                Task { @MainActor in
+                    print("User Event: \(event.action) by \(event.username)")
+                    
+                    // Handle events from second page
+                    if event.action == "user_added" {
+                        eventLog.insert("👤 User added from Second Page: \(event.username)", at: 0)
+                        if eventLog.count > 20 {
+                            eventLog.removeLast()
+                        }
                     }
                 }
             }
             
             // Listen to system events
             store.getEventBus().subscribe(to: SystemEvent.self) { event in
-                print("System Event: \(event.event)")
-                
-                // Handle events from second page
-                if event.event == "navigation" && event.details["action"] == "back_to_first" {
-                    eventLog.insert("🏠 Second page returned to first page", at: 0)
+                Task { @MainActor in
+                    print("System Event: \(event.event)")
+                    
+                    // 특정 조건에 따라 다른 메시지 표시
+                    if event.event == "navigation" && event.details["action"] == "back_to_first" {
+                        eventLog.insert("🏠 Second page returned to first page", at: 0)
+                    } else if event.event == "button_click", let buttonName = event.details["button"] {
+                        // 버튼 클릭 이벤트는 버튼 이름 표시
+                        eventLog.insert("⚙️ System Event: \(event.event) - \(buttonName)", at: 0)
+                    } else {
+                        // 일반 SystemEvent 표시
+                        let eventDescription = event.event.isEmpty ? "⚙️ System Event" : "⚙️ System Event: \(event.event)"
+                        eventLog.insert(eventDescription, at: 0)
+                    }
+                    
                     if eventLog.count > 20 {
                         eventLog.removeLast()
                     }

@@ -129,22 +129,30 @@ struct SecondView: View {
         Task { @MainActor in
             // Subscribe to all events
             store.getEventBus().subscribe { event in
-                addLog("📱 All Event: \(type(of: event))")
+                Task { @MainActor in
+                    addLog("📱 All Event: \(type(of: event))")
+                }
             }
             
             // Subscribe to chat events
             store.getEventBus().subscribe(to: ChatEvent.self) { event in
-                addLog("💬 Chat Event: \(event.type) from \(event.sender)")
+                Task { @MainActor in
+                    addLog("💬 Chat Event: \(event.type) from \(event.sender)")
+                }
             }
             
             // Subscribe to user events
             store.getEventBus().subscribe(to: UserEvent.self) { event in
-                addLog("👤 User Event: \(event.action) by \(event.username)")
+                Task { @MainActor in
+                    addLog("👤 User Event: \(event.action) by \(event.username)")
+                }
             }
             
             // Subscribe to system events
             store.getEventBus().subscribe(to: SystemEvent.self) { event in
-                addLog("⚙️ System Event: \(event.event)")
+                Task { @MainActor in
+                    addLog("⚙️ System Event: \(event.event)")
+                }
             }
             
             addLog("🚀 EventBus subscriptions setup complete")

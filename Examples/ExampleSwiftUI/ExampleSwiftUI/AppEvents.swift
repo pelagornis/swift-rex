@@ -51,22 +51,18 @@ public struct SystemEvent: EventType {
 // MARK: - Event Bus Extensions
 public extension EventBus {
     // Convenience methods for chat events
-    @MainActor
     func publishAppEvent(name: String, data: [String: String] = [:]) {
         publish(AppEvent(name: name, data: data))
     }
 
-    @MainActor
     func publishChatEvent(type: String, message: String, sender: String) {
         publish(ChatEvent(type: type, message: message, sender: sender))
     }
     
-    @MainActor
     func publishUserEvent(action: String, username: String, data: [String: String] = [:]) {
         publish(UserEvent(action: action, username: username, data: data))
     }
     
-    @MainActor
     func publishSystemEvent(event: String, details: [String: String] = [:]) {
         publish(SystemEvent(event: event, details: details))
     }
