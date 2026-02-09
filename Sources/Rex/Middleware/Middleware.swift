@@ -1,8 +1,8 @@
 import Foundation
 
 public protocol Middleware: Sendable {
-    associatedtype State: StateType
-    associatedtype Action: ActionType
+    associatedtype State: StateProtocol
+    associatedtype Action: ActionProtocol
 
     func process(
         state: State,

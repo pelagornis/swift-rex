@@ -38,7 +38,7 @@ First, define what your app's state looks like:
 ```swift
 import Rex
 
-struct AppState: StateType {
+struct AppState: State {
     var count: Int = 0
     var isLoading: Bool = false
     var errorMessage: String? = nil
@@ -51,7 +51,7 @@ struct AppState: StateType {
 Next, define the actions that can change your state:
 
 ```swift
-enum AppAction: ActionType {
+enum AppAction: Action {
     case increment
     case decrement
     case reset
@@ -145,7 +145,7 @@ import SwiftUI
 import Rex
 
 struct ContentView: View {
-    @StateObject var store: ObservableStore<AppReducer>
+    @StoreStateObject var store: ObservableStore<AppReducer>
 
     var body: some View {
         VStack(spacing: 20) {

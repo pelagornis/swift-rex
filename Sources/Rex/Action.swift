@@ -8,7 +8,7 @@ import Foundation
 ///
 /// ## Example
 /// ```swift
-/// enum AppAction: ActionType {
+/// enum AppAction: Action {
 ///     case increment
 ///     case decrement
 ///     case setCount(Int)
@@ -16,4 +16,6 @@ import Foundation
 ///     case userLoaded(User)
 /// }
 /// ```
-public protocol ActionType: Sendable {}
+public protocol ActionProtocol: Sendable {}
+/// Public typealias so app types conform to ``Action`` (e.g. `enum AppAction: Action`).
+public typealias Action = ActionProtocol

@@ -13,7 +13,7 @@ State management is the core of any Swift-Rex application. Understanding how to 
 Swift-Rex uses a single state tree that represents the entire state of your application. This makes it easy to track changes and debug issues.
 
 ```swift
-struct AppState: StateType {
+struct AppState: State {
     // User state
     var user: User?
     var isAuthenticated: Bool = false
@@ -89,7 +89,7 @@ case .userLoggedIn(let user):
 Store related data in a normalized structure for better performance:
 
 ```swift
-struct AppState: StateType {
+struct AppState: State {
     // Normalized entities
     var users: [String: User] = [:]
     var posts: [String: Post] = [:]
@@ -145,20 +145,20 @@ struct AppReducer: Reducer {
 Use associated values to compose actions:
 
 ```swift
-enum AppAction: ActionType {
+enum AppAction: Action {
     case counter(CounterAction)
     case todo(TodoAction)
     case settings(SettingsAction)
     case user(UserAction)
 }
 
-enum CounterAction: ActionType {
+enum CounterAction: Action {
     case increment
     case decrement
     case reset
 }
 
-enum TodoAction: ActionType {
+enum TodoAction: Action {
     case add(String)
     case remove(String)
     case toggle(String)
@@ -238,7 +238,7 @@ case .setCount(let count):
 Enforce business rules in your state:
 
 ```swift
-struct AppState: StateType {
+struct AppState: State {
     var count: Int = 0 {
         didSet {
             // Ensure count never goes below 0
@@ -328,12 +328,12 @@ struct AppState {
     var isAuthenticated: Bool = false
     var authToken: String?
 
-    // UI State
+    // UI state
     var isLoading: Bool = false
     var errorMessage: String? = nil
     var currentTab: Tab = .home
 
-    // Feature State
+    // Feature state
     var counter: CounterState = CounterState()
     var todo: TodoState = TodoState()
 }

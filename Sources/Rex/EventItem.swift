@@ -8,17 +8,14 @@ import Foundation
 ///
 /// ## Example
 /// ```swift
-/// struct UserLoggedInEvent: EventType {
+/// struct UserLoggedInEvent: EventItem {
 ///     let userId: String
 ///     let timestamp: Date
 /// }
 ///
-/// struct NetworkErrorEvent: EventType {
+/// struct NetworkErrorEvent: EventItem {
 ///     let error: String
 ///     let code: Int
 /// }
 /// ```
-public protocol EventType: Sendable, Codable {
-    // This protocol serves as a marker for event types
-    // No additional requirements are needed beyond Sendable and Codable conformance
-}
+public protocol EventItem: Sendable, Codable {}

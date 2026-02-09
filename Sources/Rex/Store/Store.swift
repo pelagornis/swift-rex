@@ -8,11 +8,11 @@ import Foundation
 ///
 /// ## Example
 /// ```swift
-/// struct AppState: StateType {
+/// struct AppState: State {
 ///     var count: Int = 0
 /// }
 ///
-/// enum AppAction: ActionType {
+/// enum AppAction: Action {
 ///     case increment
 ///     case decrement
 /// }
@@ -33,6 +33,11 @@ import Foundation
 /// store.dispatch(.increment)
 /// ```
 public final class Store<R: Reducer>: Sendable {
+    /// State type from the reducer.
+    public typealias State = R.State
+    /// Action type from the reducer.
+    public typealias Action = R.Action
+
     private let dispatchActor: DispatchActor<R.State, R.Action, R>
     private let stateActor: StateActor<R.State>
     private let subscribersActor: SubscribersActor<R.State>

@@ -1,4 +1,4 @@
-public struct AnyMiddleware<State: StateType, Action: ActionType>: Middleware {
+public struct AnyMiddleware<State: StateProtocol, Action: ActionProtocol>: Middleware {
     private let _process: @Sendable (State, Action, @escaping @Sendable (Action) -> Void) async -> [Effect<Action>]
 
     public init<M: Middleware>(_ middleware: M) where M.State == State, M.Action == Action {

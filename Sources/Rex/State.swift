@@ -8,11 +8,13 @@ import Foundation
 ///
 /// ## Example
 /// ```swift
-/// struct AppState: StateType {
+/// struct AppState: State {
 ///     var count: Int = 0
 ///     var isLoading: Bool = false
 ///     var errorMessage: String? = nil
 ///     var lastUpdated: Date = Date()
 /// }
 /// ```
-public protocol StateType: Sendable, Equatable, Codable {}
+public protocol StateProtocol: Sendable, Equatable, Codable {}
+/// Public typealias so app types conform to ``State`` (e.g. `struct AppState: State`).
+public typealias State = StateProtocol
