@@ -39,7 +39,7 @@ public final class EventBus: Sendable {
     /// This method returns immediately without waiting for the event to be processed.
     ///
     /// - Parameter event: The event to publish.
-    public func publish(_ event: EventProtocol) {
+    public func publish(_ event: EventItem) {
         Task {
             await publishActor.enqueue(event)
         }
@@ -50,7 +50,7 @@ public final class EventBus: Sendable {
     /// The handler will be called for every event published to the bus.
     ///
     /// - Parameter handler: A closure that receives published events.
-    public func subscribe(handler: @escaping @Sendable (EventProtocol) -> Void) {
+    public func subscribe(handler: @escaping @Sendable (EventItem) -> Void) {
         Task {
             await subscribersActor.addSubscriber(handler)
         }
@@ -63,7 +63,7 @@ public final class EventBus: Sendable {
     /// - Parameters:
     ///   - eventType: The type of events to subscribe to.
     ///   - handler: A closure that receives events of the specified type.
-    public func subscribe<T: EventProtocol>(
+    public func subscribe<T: EventItem>(
         to eventType: T.Type,
         handler: @escaping @Sendable (T) -> Void
     ) {
@@ -82,7 +82,7 @@ public final class EventBus: Sendable {
     ///   - eventType: The type of events to subscribe to.
     ///   - filter: A closure that determines if an event should be handled.
     ///   - handler: A closure that receives events matching the type and filter.
-    public func subscribe<T: EventProtocol>(
+    public func subscribe<T: EventItem>(
         to eventType: T.Type,
         where filter: @escaping @Sendable (T) -> Bool,
         handler: @escaping @Sendable (T) -> Void
@@ -101,7 +101,7 @@ public final class EventBus: Sendable {
 /// to guarantee order and prevent event loss.
 private actor EventPublishActor {
     private let subscribersActor: EventSubscribersActor
-    private var eventQueue: [EventProtocol] = []
+    private var eventQueue: [EventItem] = []
     private var processingTask: Task<Void, Never>?
     
     init(subscribersActor: EventSubscribersActor) {
@@ -111,7 +111,7 @@ private actor EventPublishActor {
     /// Adds an event to the queue and starts processing if needed.
     ///
     /// - Parameter event: The event to enqueue.
-    func enqueue(_ event: EventProtocol) {
+    func enqueue(_ event: EventItem) {
         eventQueue.append(event)
         startProcessingIfNeeded()
     }
@@ -148,7 +148,7 @@ private actor EventPublishActor {
     ) async {
         while true {
             // Dequeue next event from the queue
-            let event: EventProtocol? = await actor.dequeueNextEventProtocol()
+            let event: EventItem? = await actor.dequeueNextEventItem()
             
             guard let event = event else {
                 // If queue is empty, stop processing
@@ -169,7 +169,7 @@ private actor EventPublishActor {
     /// Removes and returns the next event from the queue.
     ///
     /// - Returns: The next event in the queue, or `nil` if the queue is empty.
-    private func dequeueNextEventProtocol() -> EventProtocol? {
+    private func dequeueNextEventItem() -> EventItem? {
         guard !eventQueue.isEmpty else { return nil }
         return eventQueue.removeFirst()
     }
@@ -191,19 +191,19 @@ private actor EventPublishActor {
 /// This actor maintains a list of subscriber handlers and ensures thread-safe
 /// access when adding subscribers or publishing events.
 private actor EventSubscribersActor {
-    private var subscribers: [@Sendable (EventProtocol) -> Void] = []
+    private var subscribers: [@Sendable (EventItem) -> Void] = []
 
     /// Adds a new subscriber to the list.
     ///
     /// - Parameter handler: The closure that will be called when events are published.
-    func addSubscriber(_ handler: @escaping @Sendable (EventProtocol) -> Void) {
+    func addSubscriber(_ handler: @escaping @Sendable (EventItem) -> Void) {
         subscribers.append(handler)
     }
 
     /// Publishes an event to all registered subscribers.
     ///
     /// - Parameter event: The event to publish to all subscribers.
-    func publish(_ event: EventProtocol) {
+    func publish(_ event: EventItem) {
         for subscriber in subscribers {
             subscriber(event)
         }
