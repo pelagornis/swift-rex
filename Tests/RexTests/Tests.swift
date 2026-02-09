@@ -11,7 +11,7 @@ import Foundation
 
 // MARK: - Test Event Types
 
-struct AppEvent: EventType {
+struct AppEvent: EventItem {
     let name: String
     let data: [String: String]
     
@@ -23,7 +23,7 @@ struct AppEvent: EventType {
 
 // MARK: - Test Models
 
-struct TestState: StateType {
+struct TestState: State {
     var count: Int = 0
     var isLoading: Bool = false
     var errorMessage: String? = nil
@@ -44,7 +44,7 @@ struct TestUser: Codable, Equatable, Sendable {
     }
 }
 
-enum TestAction: ActionType, Equatable {
+enum TestAction: Action, Equatable {
     case increment
     case decrement
     case reset
