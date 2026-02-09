@@ -2,7 +2,7 @@ import SwiftUI
 import Rex
 
 struct SecondView: View {
-    @ObservedObject var store: AppStore
+    @ObservedObject var store: ObservableStore<AppReducer>
     @Environment(\.dismiss) private var dismiss
     @State private var eventLog: [String] = []
     

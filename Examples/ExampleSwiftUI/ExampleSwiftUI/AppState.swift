@@ -1,7 +1,7 @@
 import Foundation
 import Rex
 
-public struct AppState: StateType {
+public struct AppState: State {
     public var messages: [Message] = []
     public var currentUser: User = User(id: "user1", name: "Me", avatar: "👤")
     public var isLoading: Bool = false

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DC7817CE2F39B64D00CBB3AC /* Rex in Frameworks */ = {isa = PBXBuildFile; productRef = DC7817CD2F39B64D00CBB3AC /* Rex */; };
 		DCBB99B32E4F7B4A00FA1AC0 /* Rex in Frameworks */ = {isa = PBXBuildFile; productRef = DCBB99B22E4F7B4A00FA1AC0 /* Rex */; };
 		DCC383CA2E4C6A7400AFA983 /* Rex in Frameworks */ = {isa = PBXBuildFile; productRef = DCC383C92E4C6A7400AFA983 /* Rex */; };
 		DCC383D22E4C6A9C00AFA983 /* Rex in Frameworks */ = {isa = PBXBuildFile; productRef = DCC383D12E4C6A9C00AFA983 /* Rex */; };
@@ -31,6 +32,7 @@
 			files = (
 				DCBB99B32E4F7B4A00FA1AC0 /* Rex in Frameworks */,
 				DCC383D22E4C6A9C00AFA983 /* Rex in Frameworks */,
+				DC7817CE2F39B64D00CBB3AC /* Rex in Frameworks */,
 				DCC383CA2E4C6A7400AFA983 /* Rex in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -77,6 +79,7 @@
 				DCC383C92E4C6A7400AFA983 /* Rex */,
 				DCC383D12E4C6A9C00AFA983 /* Rex */,
 				DCBB99B22E4F7B4A00FA1AC0 /* Rex */,
+				DC7817CD2F39B64D00CBB3AC /* Rex */,
 			);
 			productName = ExampleSwiftUI;
 			productReference = DCC383962E4C697700AFA983 /* ExampleSwiftUI.app */;
@@ -107,7 +110,7 @@
 			mainGroup = DCC3838D2E4C697700AFA983;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				DCC383C82E4C6A7400AFA983 /* XCLocalSwiftPackageReference "../../../swift-rex" */,
+				DC7817CC2F39B64D00CBB3AC /* XCLocalSwiftPackageReference "../../../swift-rex" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DCC383972E4C697700AFA983 /* Products */;
@@ -341,13 +344,17 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		DCC383C82E4C6A7400AFA983 /* XCLocalSwiftPackageReference "../../../swift-rex" */ = {
+		DC7817CC2F39B64D00CBB3AC /* XCLocalSwiftPackageReference "../../../swift-rex" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "../../../swift-rex";
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		DC7817CD2F39B64D00CBB3AC /* Rex */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Rex;
+		};
 		DCBB99B22E4F7B4A00FA1AC0 /* Rex */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Rex;

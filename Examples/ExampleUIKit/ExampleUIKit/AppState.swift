@@ -1,7 +1,7 @@
 import Foundation
 import Rex
 
-public struct AppState: StateType {
+public struct AppState: State {
     public var score: Int = 0
     public var highScore: Int = 0
     public var level: Int = 1

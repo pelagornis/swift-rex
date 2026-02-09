@@ -2,7 +2,7 @@ import Foundation
 import Rex
 
 // MARK: - App Events
-public struct AppEvent: EventType {
+public struct AppEvent: EventItem {
     public let name: String
     public let data: [String: String]
     
@@ -12,7 +12,7 @@ public struct AppEvent: EventType {
     }
 }
 
-public struct NavigationEvent: EventType {
+public struct NavigationEvent: EventItem {
     public let route: String
     public let parameters: [String: String]
     
@@ -22,7 +22,7 @@ public struct NavigationEvent: EventType {
     }
 }
 
-public struct UserActionEvent: EventType {
+public struct UserActionEvent: EventItem {
     public let action: String
     public let screen: String
     public let metadata: [String: String]

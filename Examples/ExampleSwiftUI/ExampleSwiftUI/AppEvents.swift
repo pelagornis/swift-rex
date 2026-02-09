@@ -1,7 +1,7 @@
 import Foundation
 import Rex
 
-public struct AppEvent: EventType {
+public struct AppEvent: EventItem {
     public let name: String
     public let data: [String: String]
     
@@ -12,7 +12,7 @@ public struct AppEvent: EventType {
 }
 
 // MARK: - Chat App Events
-public struct ChatEvent: EventType {
+public struct ChatEvent: EventItem {
     public let type: String
     public let message: String
     public let sender: String
@@ -26,7 +26,7 @@ public struct ChatEvent: EventType {
     }
 }
 
-public struct UserEvent: EventType {
+public struct UserEvent: EventItem {
     public let action: String
     public let username: String
     public let data: [String: String]
@@ -38,7 +38,7 @@ public struct UserEvent: EventType {
     }
 }
 
-public struct SystemEvent: EventType {
+public struct SystemEvent: EventItem {
     public let event: String
     public let details: [String: String]
     

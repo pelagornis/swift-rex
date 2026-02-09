@@ -2,17 +2,17 @@ import SwiftUI
 import Rex
 
 struct ContentView: View {
-    @StateObject var store: AppStore
+    @StateObject private var store: ObservableStore<AppReducer>
     @State private var messageText = ""
     @State private var eventLog: [String] = []
     @State private var showingSecondView = false
     
     init() {
-        let store = Store(
+        let s = Store(
             initialState: AppState(),
             reducer: AppReducer()
         )
-        self._store = StateObject(wrappedValue: AppStore(store: store))
+        self._store = StateObject(wrappedValue: ObservableStore(store: s))
     }
     
     var body: some View {
@@ -269,7 +269,7 @@ struct TypingIndicatorView: View {
 
 // MARK: - Event Bus Demo View
 struct EventBusDemoView: View {
-    @ObservedObject var store: AppStore
+    @ObservedObject var store: ObservableStore<AppReducer>
     @Binding var eventLog: [String]
     
     var body: some View {
