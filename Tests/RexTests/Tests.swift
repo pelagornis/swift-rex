@@ -23,7 +23,7 @@ struct AppEvent: EventItem {
 
 // MARK: - Test Models
 
-struct TestState: State {
+struct TestState: Statable {
     var count: Int = 0
     var isLoading: Bool = false
     var errorMessage: String? = nil
@@ -44,7 +44,7 @@ struct TestUser: Codable, Equatable, Sendable {
     }
 }
 
-enum TestAction: Action, Equatable {
+enum TestAction: Actionable, Equatable {
     case increment
     case decrement
     case reset
