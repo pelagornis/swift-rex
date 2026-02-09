@@ -1,7 +1,7 @@
 import Foundation
 import Rex
 
-public enum AppAction: Action {
+public enum AppAction: Actionable {
     // User actions
     case userLogin
     case userLogout

@@ -1,7 +1,7 @@
 import Foundation
 import Rex
 
-public enum AppAction: Action {
+public enum AppAction: Actionable {
     // Game actions
     case startGame
     case endGame
