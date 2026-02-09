@@ -1,6 +1,6 @@
 import Foundation
 
-public struct LoggingMiddleware<State: StateProtocol, Action: ActionProtocol>: Middleware {
+public struct LoggingMiddleware<State: Statable, Action: Actionable>: Middleware {
     public init() {}
 
     public func process(

@@ -1,6 +1,6 @@
 import Foundation
 
-public final class MiddlewareChain<State: StateProtocol, Action: ActionProtocol> {
+public final class MiddlewareChain<State: Statable, Action: Actionable> {
     private var middlewares: [AnyMiddleware<State, Action>] = []
 
     public init(_ middlewares: [AnyMiddleware<State, Action>] = []) {

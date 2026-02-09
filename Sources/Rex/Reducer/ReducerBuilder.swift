@@ -1,7 +1,7 @@
 import Foundation
 
 @resultBuilder
-public struct ReducerBuilder<State: StateProtocol, Action: ActionProtocol> {
+public struct ReducerBuilder<State: Statable, Action: Actionable> {
     public static func buildBlock(_ parts: ((inout State, Action) -> [Effect<Action>])...) -> (inout State, Action) -> [Effect<Action>] {
         { state, action in
             for part in parts {

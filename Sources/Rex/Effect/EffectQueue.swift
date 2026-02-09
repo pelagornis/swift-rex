@@ -22,7 +22,7 @@ public enum EffectStrategy: Sendable {
 /// queue.enqueue(Effect.just(.increment))
 /// queue.enqueue(Effect.just(.decrement))
 /// ```
-public actor EffectQueue<Action: ActionProtocol> {
+public actor EffectQueue<Action: Actionable> {
     private let strategy: EffectStrategy
     private let dispatch: @Sendable (Action) -> Void
 

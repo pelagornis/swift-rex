@@ -1,7 +1,7 @@
 import Foundation
 
 @resultBuilder
-public struct MiddlewareBuilder<State: StateProtocol, Action: ActionProtocol> {
+public struct MiddlewareBuilder<State: Statable, Action: Actionable> {
     public static func buildBlock<M: Middleware>(_ components: M...) -> [AnyMiddleware<State, Action>] where M.State == State, M.Action == Action {
         components.map { AnyMiddleware($0) }
     }

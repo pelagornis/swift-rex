@@ -1,6 +1,6 @@
 import Foundation
 
-public actor TimeTravelState<State: StateProtocol> {
+public actor TimeTravelState<State: Statable> {
     var history: [State] = []
     var currentIndex: Int = -1
 }
@@ -33,7 +33,7 @@ extension TimeTravelState {
     }
 }
 
-public final class TimeTravelMiddleware<State: StateProtocol, Action: ActionProtocol>: Middleware {
+public final class TimeTravelMiddleware<State: Statable, Action: Actionable>: Middleware {
     private let state = TimeTravelState<State>()
 
     public init() {}

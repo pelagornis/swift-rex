@@ -26,7 +26,7 @@ import Foundation
 ///     }
 /// }
 /// ```
-public struct Effect<Action: ActionProtocol>: Sendable {
+public struct Effect<Action: Actionable>: Sendable {
     private let operation: @Sendable (EffectEmitter<Action>) async -> Void
 
     /// Creates a new effect with the specified operation.

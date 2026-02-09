@@ -33,10 +33,10 @@ import Foundation
 /// ```
 public protocol Reducer: Sendable {
     /// The type of state this reducer manages.
-    associatedtype State: StateProtocol
+    associatedtype State: Statable
     
     /// The type of actions this reducer can handle.
-    associatedtype Action: ActionProtocol
+    associatedtype Action: Actionable
     
     /// Transforms the current state based on the given action.
     ///

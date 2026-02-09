@@ -8,11 +8,11 @@ import Foundation
 ///
 /// ## Example
 /// ```swift
-/// struct AppState: State {
+/// struct AppState: Statable {
 ///     var count: Int = 0
 /// }
 ///
-/// enum AppAction: Action {
+/// enum AppAction: Actionable {
 ///     case increment
 ///     case decrement
 /// }
