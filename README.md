@@ -41,7 +41,7 @@ The documentation for releases and `main` are available here:
 ```swift
 import Rex
 
-struct AppState: StateType {
+struct AppState: State {
     var count: Int = 0
     var isLoading: Bool = false
     var errorMessage: String? = nil
@@ -64,7 +64,7 @@ struct AppState: StateType {
 ### 2. Define Actions
 
 ```swift
-enum AppAction: ActionType {
+enum AppAction: Action {
     // Counter actions
     case increment
     case decrement
@@ -163,6 +163,8 @@ Swift-Rex uses Swift actors to ensure thread-safe state management. All state up
 
 ### Using ObservableStore
 
+`ObservableStore` wraps `Store` for SwiftUI with `@Published` state and type-safe APIs. Use `store.state` and `store.send(_:)` for reads and actions. For two-way bindings (e.g. `TextField`), use `store.binding(_:send:)` so updates dispatch an action.
+
 ```swift
 import SwiftUI
 import Rex
@@ -190,53 +192,30 @@ struct ContentView: View {
     }
 }
 
-// Initialize Store in App
+// Create Store and ObservableStore (e.g. in App or root view)
 @main
 struct MyApp: App {
+    @StateObject private var store = ObservableStore(store: Store(
+        initialState: AppState(),
+        reducer: AppReducer()
+    ))
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(store)
         }
     }
 }
 ```
 
-### Custom AppStore Usage
+- **Typealiases**: `ObservableStore<AppReducer>.State` and `.Action` match the reducer’s `State` and `Action` for clearer types.
+- **Two-way binding**: Use `store.binding(_:send:)` for controls that write back (e.g. `TextField`, `Toggle`):  
+  `store.binding(\.someValue, send: AppAction.setSomeValue)` returns a `Binding<Value>` and dispatches the given action on change.
 
-```swift
-@MainActor
-class AppStore: ObservableObject {
-    @Published var state: AppState
-    let store: Store<AppReducer>
+### Custom store wrapper (optional)
 
-    init(store: Store<AppReducer>) {
-        self.store = store
-        self.state = store.getInitialState()
-
-        store.subscribe { [weak self] newState in
-            Task { @MainActor in
-                self?.state = newState
-            }
-        }
-    }
-
-    func send(_ action: AppAction) {
-        store.dispatch(action)
-    }
-
-    func getEventBus() -> EventBus {
-        return store.getEventBus()
-    }
-}
-
-struct ContentView: View {
-    @ObservedObject var store: AppStore
-
-    var body: some View {
-        // UI implementation
-    }
-}
-```
+You can still use a custom `ObservableObject` wrapper around `Store` if you need extra behavior; otherwise prefer `ObservableStore`.
 
 ## 🎨 UIKit Integration
 
@@ -389,12 +368,12 @@ EventBus provides a thread-safe global event system for handling cross-component
 
 ```swift
 // Custom events
-struct UserLoggedInEvent: EventType {
+struct UserLoggedInEvent: EventItem {
     let userId: String
     let timestamp: Date
 }
 
-struct NetworkErrorEvent: EventType {
+struct NetworkErrorEvent: EventItem {
     let error: String
     let code: Int
 }
@@ -616,10 +595,10 @@ struct SecondView: View {
 
 The project includes example apps for both SwiftUI and UIKit:
 
-- **SwiftUI Example**: Chat app demonstrating Event Bus functionality
-- **UIKit Example**: Game app demonstrating multi-page Event Bus communication
+- **SwiftUI Example**: Chat app using `ObservableStore<AppReducer>` for state and actions, plus Event Bus for cross-screen events. Demonstrates `store.state`, `store.send(_:)`, and `store.getEventBus()`.
+- **UIKit Example**: Game app demonstrating multi-page Event Bus communication with `Store` and custom UI updates.
 
-Run the example apps to see all Swift-Rex features in action.
+Run the example apps to see Swift-Rex features (Store, ObservableStore, Event Bus) in action.
 
 ## License
 
