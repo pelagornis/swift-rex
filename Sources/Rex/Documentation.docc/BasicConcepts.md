@@ -20,7 +20,7 @@ State represents the current condition of your application at any point in time.
 ### Example
 
 ```swift
-struct AppState: State {
+struct AppState: Statable {
     var count: Int = 0
     var isLoading: Bool = false
     var errorMessage: String? = nil
@@ -43,7 +43,7 @@ Actions describe what happened in your application. They are the only way to cha
 ### Example
 
 ```swift
-enum AppAction: Action {
+enum AppAction: Actionable {
     // User interactions
     case increment
     case decrement

@@ -38,7 +38,7 @@ First, define what your app's state looks like:
 ```swift
 import Rex
 
-struct AppState: State {
+struct AppState: Statable {
     var count: Int = 0
     var isLoading: Bool = false
     var errorMessage: String? = nil
@@ -51,7 +51,7 @@ struct AppState: State {
 Next, define the actions that can change your state:
 
 ```swift
-enum AppAction: Action {
+enum AppAction: Actionable {
     case increment
     case decrement
     case reset

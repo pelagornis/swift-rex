@@ -41,7 +41,7 @@ The documentation for releases and `main` are available here:
 ```swift
 import Rex
 
-struct AppState: State {
+struct AppState: Statable {
     var count: Int = 0
     var isLoading: Bool = false
     var errorMessage: String? = nil
@@ -64,7 +64,7 @@ struct AppState: State {
 ### 2. Define Actions
 
 ```swift
-enum AppAction: Action {
+enum AppAction: Actionable {
     // Counter actions
     case increment
     case decrement
