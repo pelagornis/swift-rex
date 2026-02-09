@@ -18,6 +18,57 @@ Swift-Rex is a modern state management library that supports both SwiftUI and UI
 - 🛡️ **Thread-Safe**: Actor-based architecture ensures safe concurrent access
 - 📡 **Event Bus**: Thread-safe event system with guaranteed sequential processing
 
+## 🏗 Architecture
+
+Swift-Rex uses a unidirectional data flow: **UI → Action → Middleware → Reducer → State → UI**. The EventBus provides optional cross-component messaging.
+
+```mermaid
+flowchart LR
+    subgraph UI
+        V[View]
+    end
+    subgraph Store
+        D[Dispatch]
+        S[(State)]
+    end
+    subgraph Pipeline
+        M[Middleware]
+        R[Reducer]
+        E[Effects]
+    end
+    V -->|"dispatch(Action)"| D
+    D --> M
+    M --> R
+    R -->|"new State + Effects"| S
+    R --> E
+    E -->|"send(Action)"| D
+    S -->|"subscribe"| V
+```
+
+```mermaid
+flowchart TB
+    subgraph Core
+        Store[Store]
+        Reducer[Reducer]
+        Middleware[Middleware]
+        Effect[Effect]
+    end
+    subgraph Types
+        Statable[Statable]
+        Actionable[Actionable]
+        EventItem[EventItem]
+    end
+    Store --> Reducer
+    Store --> Middleware
+    Reducer --> Effect
+    Reducer --> Statable
+    Reducer --> Actionable
+    Store -.->|"optional"| EventBus[EventBus]
+    EventBus --> EventItem
+```
+
+**Data flow:** User Action → Dispatch → Middleware → Reducer → (State update + Effects) → Subscribers / UI. Effects can dispatch new actions for async work.
+
 ## 📦 Installation
 
 ### Swift Package Manager
