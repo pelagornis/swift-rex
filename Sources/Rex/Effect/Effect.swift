@@ -1,73 +1,123 @@
 import Foundation
 
-/// A struct that represents a side effect that can be executed by the store.
+/// A reactive side effect modeled as an ``AsyncStream`` of actions.
 ///
-/// Effects are used to handle asynchronous operations, side effects, and other
-/// operations that are not pure state transformations. They can dispatch new
-/// actions back to the store using the provided emitter.
-///
-/// ## Example
-/// ```swift
-/// // Network request effect
-/// Effect { emitter in
-///     let data = try await URLSession.shared.data(from: url)
-///     let response = try JSONDecoder().decode(Response.self, from: data.0)
-///     await emitter.withValue { emitter in
-///         emitter.send(.dataLoaded(response))
-///     }
-/// }
-///
-/// // Timer effect
-/// Effect { emitter in
-///     for await _ in Timer.publish(every: 1, on: .main, in: .common).autoconnect() {
-///         await emitter.withValue { emitter in
-///             emitter.send(.timerTick)
-///         }
-///     }
-/// }
-/// ```
+/// Effects can be one-shot (legacy closure style) or long-lived streams (WebSocket, timers, Combine).
+/// Assign an ``EffectID`` with `cancelInFlight` to automatically cancel prior runs of the same effect.
 public struct Effect<Action: Actionable>: Sendable {
-    private let operation: @Sendable (EffectEmitter<Action>) async -> Void
+    private let streamFactory: @Sendable () -> AsyncStream<Action>
 
-    /// Creates a new effect with the specified operation.
-    ///
-    /// - Parameter operation: An async closure that performs the side effect.
-    ///   The closure receives an `EffectEmitter` that can be used to dispatch actions.
-    public init(_ operation: @escaping @Sendable (EffectEmitter<Action>) async -> Void) {
-        self.operation = operation
+    /// Optional identifier for cancellation and deduplication in the store.
+    public let id: EffectID?
+
+    /// When `true` and `id` is set, starting this effect cancels any in-flight effect with the same id.
+    public let cancelInFlight: Bool
+
+    /// Creates an effect from an async stream factory.
+    public init(
+        id: EffectID? = nil,
+        cancelInFlight: Bool = false,
+        stream: @escaping @Sendable () -> AsyncStream<Action>
+    ) {
+        self.id = id
+        self.cancelInFlight = cancelInFlight
+        self.streamFactory = stream
     }
 
-    /// Executes the effect with the provided dispatch function.
-    ///
-    /// - Parameter dispatch: A closure that can be used to dispatch actions back to the store.
+    /// Creates a one-shot or long-lived effect using an emitter (backward compatible).
+    public init(_ operation: @escaping @Sendable (EffectEmitter<Action>) async -> Void) {
+        self.init(id: nil, cancelInFlight: false, stream: {
+            Self.closureStream(operation)
+        })
+    }
+
+    /// Creates a cancellable effect with an optional in-flight cancellation policy.
+    public init(
+        id: EffectID,
+        cancelInFlight: Bool = true,
+        _ operation: @escaping @Sendable (EffectEmitter<Action>) async -> Void
+    ) {
+        self.init(id: id, cancelInFlight: cancelInFlight, stream: {
+            Self.closureStream(operation)
+        })
+    }
+
+    /// Materializes the effect as an ``AsyncStream`` of actions.
+    public func makeStream() -> AsyncStream<Action> {
+        streamFactory()
+    }
+
+    /// Consumes the stream and dispatches each action (blocks until the stream finishes).
     public func run(dispatch: @escaping @Sendable (Action) -> Void) async {
-        let emitter = EffectEmitter(dispatch: dispatch)
-        await operation(emitter)
+        for await action in makeStream() {
+            if Task.isCancelled { break }
+            dispatch(action)
+        }
+    }
+
+    private static func closureStream(
+        _ operation: @escaping @Sendable (EffectEmitter<Action>) async -> Void
+    ) -> AsyncStream<Action> {
+        AsyncStream { continuation in
+            let task = Task {
+                let emitter = EffectEmitter { action in
+                    continuation.yield(action)
+                }
+                await operation(emitter)
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
     }
 }
 
 public extension Effect {
     /// An effect that does nothing.
-    ///
-    /// Use this when an action doesn't need to perform any side effects.
     static var none: Effect<Action> {
         Effect { _ in }
     }
-    
+
+    /// Creates an effect backed by an existing ``AsyncStream``.
+    static func stream(_ stream: @escaping @Sendable () -> AsyncStream<Action>) -> Effect<Action> {
+        Effect(stream: stream)
+    }
+
+    /// Maps elements from any async sequence into actions.
+    static func fromSequence<S: AsyncSequence>(
+        _ sequence: S,
+        map: @escaping @Sendable (S.Element) -> Action?
+    ) -> Effect<Action> where S: Sendable {
+        Effect {
+            AsyncStream { continuation in
+                let task = Task {
+                    do {
+                        for try await element in sequence {
+                            if Task.isCancelled { break }
+                            if let action = map(element) {
+                                continuation.yield(action)
+                            }
+                        }
+                    } catch {
+                        continuation.finish()
+                        return
+                    }
+                    continuation.finish()
+                }
+                continuation.onTermination = { _ in task.cancel() }
+            }
+        }
+    }
+
     /// Creates an effect that immediately dispatches a single action.
-    ///
-    /// - Parameter action: The action to dispatch.
-    /// - Returns: An effect that immediately dispatches the specified action.
     static func just(_ action: Action) -> Effect<Action> {
         Effect { emitter in
             emitter.send(action)
         }
     }
-    
+
     /// Creates an effect that immediately dispatches multiple actions.
-    ///
-    /// - Parameter actions: The actions to dispatch.
-    /// - Returns: An effect that immediately dispatches all specified actions.
     static func many(_ actions: Action...) -> Effect<Action> {
         Effect { emitter in
             for action in actions {
@@ -75,24 +125,16 @@ public extension Effect {
             }
         }
     }
-    
+
     /// Creates an effect that dispatches a single action after a delay.
-    ///
-    /// - Parameters:
-    ///   - action: The action to dispatch.
-    ///   - delay: The delay in seconds before dispatching the action.
-    /// - Returns: An effect that dispatches the action after the specified delay.
     static func delayed(_ action: Action, delay: TimeInterval) -> Effect<Action> {
         Effect { emitter in
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             emitter.send(action)
         }
     }
-    
+
     /// Creates an effect that dispatches multiple actions in sequence.
-    ///
-    /// - Parameter actions: The actions to dispatch in sequence.
-    /// - Returns: An effect that dispatches all actions one after another.
     static func sequence(_ actions: Action...) -> Effect<Action> {
         Effect { emitter in
             for action in actions {
@@ -100,11 +142,8 @@ public extension Effect {
             }
         }
     }
-    
+
     /// Creates an effect that dispatches multiple actions concurrently.
-    ///
-    /// - Parameter actions: The actions to dispatch concurrently.
-    /// - Returns: An effect that dispatches all actions at the same time.
     static func concurrent(_ actions: Action...) -> Effect<Action> {
         Effect { emitter in
             await withTaskGroup(of: Void.self) { group in
@@ -116,14 +155,8 @@ public extension Effect {
             }
         }
     }
-    
+
     /// Creates an effect that repeats another effect at regular intervals.
-    ///
-    /// - Parameters:
-    ///   - effect: The effect to repeat.
-    ///   - interval: The interval between repetitions in seconds.
-    ///   - count: The number of times to repeat the effect. If nil, repeats indefinitely.
-    /// - Returns: An effect that repeats the specified effect.
     static func repeating(_ effect: Effect<Action>, interval: TimeInterval, count: Int? = nil) -> Effect<Action> {
         Effect { emitter in
             var repetitions = 0
@@ -131,7 +164,7 @@ public extension Effect {
                 await effect.run(dispatch: { action in
                     emitter.send(action)
                 })
-                
+
                 repetitions += 1
                 if count == nil || repetitions < count! {
                     try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
@@ -139,13 +172,8 @@ public extension Effect {
             }
         }
     }
-    
+
     /// Creates an effect that dispatches an action based on a condition.
-    ///
-    /// - Parameters:
-    ///   - condition: A closure that returns true if the action should be dispatched.
-    ///   - action: The action to dispatch if the condition is true.
-    /// - Returns: An effect that conditionally dispatches the action.
     static func conditional(_ condition: @escaping @Sendable () -> Bool, action: Action) -> Effect<Action> {
         Effect { emitter in
             if condition() {
@@ -153,45 +181,42 @@ public extension Effect {
             }
         }
     }
-    
+
     /// Creates an effect that maps one action to another.
-    ///
-    /// - Parameters:
-    ///   - action: The original action.
-    ///   - transform: A closure that transforms the original action.
-    /// - Returns: An effect that dispatches the transformed action.
     static func map(_ action: Action, transform: @escaping @Sendable (Action) -> Action) -> Effect<Action> {
         Effect { emitter in
             emitter.send(transform(action))
         }
     }
-    
-    /// Creates an effect that combines multiple effects into one.
-    ///
-    /// - Parameter effects: The effects to combine.
-    /// - Returns: An effect that executes all the provided effects.
+
+    /// Creates an effect that combines multiple effects into one stream.
     static func combine(_ effects: Effect<Action>...) -> Effect<Action> {
-        Effect { emitter in
-            await withTaskGroup(of: Void.self) { group in
-                for effect in effects {
-                    group.addTask {
-                        await effect.run(dispatch: { action in
-                            emitter.send(action)
-                        })
+        Effect {
+            AsyncStream { continuation in
+                let task = Task {
+                    await withTaskGroup(of: Void.self) { group in
+                        for effect in effects {
+                            group.addTask {
+                                for await action in effect.makeStream() {
+                                    if Task.isCancelled { return }
+                                    continuation.yield(action)
+                                }
+                            }
+                        }
                     }
+                    continuation.finish()
                 }
+                continuation.onTermination = { _ in task.cancel() }
             }
         }
     }
-    
+
+    /// Assigns an id and cancellation policy to an existing effect.
+    func cancellable(id: EffectID, cancelInFlight: Bool = true) -> Effect<Action> {
+        Effect(id: id, cancelInFlight: cancelInFlight, stream: streamFactory)
+    }
+
     /// Creates an effect that retries another effect on failure.
-    ///
-    /// - Parameters:
-    ///   - effect: The effect to retry.
-    ///   - maxAttempts: The maximum number of retry attempts.
-    ///   - delay: The delay between retry attempts in seconds.
-    ///   - shouldRetry: A closure that determines if the effect should be retried.
-    /// - Returns: An effect that retries the specified effect on failure.
     static func retry(
         _ effect: Effect<Action>,
         maxAttempts: Int = 3,
@@ -202,17 +227,17 @@ public extension Effect {
         Effect { emitter in
             var attempts = 0
             var lastError: Error?
-            
+
             while attempts < maxAttempts {
                 do {
                     await effect.run(dispatch: { action in
                         emitter.send(action)
                     })
-                    return // Success, exit the retry loop
+                    return
                 } catch {
                     lastError = error
                     attempts += 1
-                    
+
                     if attempts < maxAttempts && shouldRetry(error) {
                         try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                     } else {
@@ -220,23 +245,14 @@ public extension Effect {
                     }
                 }
             }
-            
-            // If we get here, all retries failed
+
             if let error = lastError {
                 onError(error)
             }
         }
     }
-    
-    /// Creates an effect that retries another effect on failure and dispatches an error action.
-    ///
-    /// - Parameters:
-    ///   - effect: The effect to retry.
-    ///   - maxAttempts: The maximum number of retry attempts.
-    ///   - delay: The delay between retry attempts in seconds.
-    ///   - shouldRetry: A closure that determines if the effect should be retried.
-    ///   - errorAction: The action to dispatch when all retries fail.
-    /// - Returns: An effect that retries the specified effect on failure.
+
+    /// Creates an effect that retries on failure and dispatches an error action.
     static func retryWithErrorAction(
         _ effect: Effect<Action>,
         maxAttempts: Int = 3,
@@ -247,17 +263,17 @@ public extension Effect {
         Effect { emitter in
             var attempts = 0
             var lastError: Error?
-            
+
             while attempts < maxAttempts {
                 do {
                     await effect.run(dispatch: { action in
                         emitter.send(action)
                     })
-                    return // Success, exit the retry loop
+                    return
                 } catch {
                     lastError = error
                     attempts += 1
-                    
+
                     if attempts < maxAttempts && shouldRetry(error) {
                         try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                     } else {
@@ -265,8 +281,7 @@ public extension Effect {
                     }
                 }
             }
-            
-            // If we get here, all retries failed
+
             if let error = lastError {
                 emitter.send(errorAction(error))
             }

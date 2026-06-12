@@ -1,23 +1,20 @@
-import SwiftUI
 import Rex
 
 @MainActor
-public class AppStore: ObservableObject {
-    @Published var state: AppState
-    private let store: Store<AppReducer>
+public final class AppEnvironment {
+    public let graphStore: GraphStore<AppReducer>
+    public let store: Store<AppReducer>
 
-    init(store: Store<AppReducer>) {
-        self.store = store
-        self.state = store.getInitialState()
-
-        store.subscribe { [weak self] newState in
-            Task { @MainActor in
-                self?.state = newState
+    public init() {
+        let graphStore = GraphStore(
+            initialState: AppState(),
+            reducer: AppReducer(),
+            embedGraphAction: { .graph($0) },
+            pipelineHooks: {
+                [AnyPipelineHook(LoggingPipelineHook(label: "GameApp"))]
             }
-        }
-    }
-
-    public func send(_ action: AppAction) {
-        store.dispatch(action)
+        )
+        self.graphStore = graphStore
+        self.store = graphStore.store
     }
 }

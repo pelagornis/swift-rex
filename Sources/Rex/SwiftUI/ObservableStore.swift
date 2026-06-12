@@ -30,7 +30,7 @@ public final class ObservableStore<R: Reducer>: ObservableObject, Sendable {
     /// Action type from the reducer.
     public typealias Action = R.Action
 
-    private let store: Store<R>
+    public let store: Store<R>
     @Published public private(set) var state: State
 
     public init(store: Store<R>) {

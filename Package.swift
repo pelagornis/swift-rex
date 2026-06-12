@@ -18,6 +18,12 @@ let package = Package(
             targets: [
                 "Rex"
             ]
+        ),
+        .library(
+            name: "RexTesting",
+            targets: [
+                "RexTesting"
+            ]
         )
     ],
     dependencies: [
@@ -30,9 +36,13 @@ let package = Package(
                 .process("Resources/PrivacyInfo.xcprivacy")
             ]
         ),
+        .target(
+            name: "RexTesting",
+            dependencies: ["Rex"]
+        ),
         .testTarget(
             name: "RexTests",
-            dependencies: ["Rex"]
+            dependencies: ["Rex", "RexTesting"]
         )
     ]
 )

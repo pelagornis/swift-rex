@@ -2,7 +2,9 @@ import Foundation
 import Rex
 
 public enum AppAction: Actionable {
-    // Game actions
+    case graph(GraphAction)
+    case delegate(DelegateAction)
+
     case startGame
     case endGame
     case addScore(Int)
@@ -11,19 +13,24 @@ public enum AppAction: Actionable {
     case gainLife
     case powerUp
     case unlockAchievement(String)
-    
-    // UI actions
+
     case loadGame
     case gameLoaded
     case saveGame
     case gameSaved
     case showError(String?)
     case clearError
-    
-    // Event Bus actions
+    case logActivity(String)
+
     case triggerScoreEvent
     case triggerLevelUpEvent
     case triggerPowerUpEvent
     case triggerAchievementEvent
     case triggerGameOverEvent
+}
+
+public enum DelegateAction: Actionable, Equatable {
+    case messageToFirst(String)
+    case addScoreFromSecond(Int)
+    case navigatedBack
 }

@@ -2,36 +2,7 @@ import Foundation
 
 /// A thread-safe store that manages application state using the Redux pattern.
 ///
-/// The Store is the central hub of the state management system. It holds the application state,
-/// processes actions through middlewares and reducers, and notifies subscribers of state changes.
-/// All state updates are processed sequentially to ensure consistency and prevent race conditions.
-///
-/// ## Example
-/// ```swift
-/// struct AppState: Statable {
-///     var count: Int = 0
-/// }
-///
-/// enum AppAction: Actionable {
-///     case increment
-///     case decrement
-/// }
-///
-/// struct AppReducer: Reducer {
-///     func reduce(state: inout AppState, action: AppAction) -> [Effect<AppAction>] {
-///         switch action {
-///         case .increment:
-///             state.count += 1
-///         case .decrement:
-///             state.count -= 1
-///         }
-///         return []
-///     }
-/// }
-///
-/// let store = Store(initialState: AppState(), reducer: AppReducer())
-/// store.dispatch(.increment)
-/// ```
+/// Actions flow through an ``ActionPipeline`` with hooks, then the reducer, then reactive effects.
 public final class Store<R: Reducer>: Sendable {
     /// State type from the reducer.
     public typealias State = R.State
@@ -41,8 +12,8 @@ public final class Store<R: Reducer>: Sendable {
     private let dispatchActor: DispatchActor<R.State, R.Action, R>
     private let stateActor: StateActor<R.State>
     private let subscribersActor: SubscribersActor<R.State>
-    private let reducer: R
-    private let middlewares: [AnyMiddleware<R.State, R.Action>]
+    private let effectRunner: EffectRunner<R.Action>
+    private let timeTravelHook: TimeTravelPipelineHook<R.State, R.Action>?
     private let eventBus: EventBus
     private let initialState: R.State
 
@@ -51,35 +22,41 @@ public final class Store<R: Reducer>: Sendable {
     /// - Parameters:
     ///   - initialState: The initial state of the application.
     ///   - reducer: The reducer that processes actions and updates state.
-    ///   - middlewares: A closure that returns an array of middlewares to process actions.
+    ///   - middlewares: Legacy middleware adapters (run at `willReceive`). Prefer ``pipelineHooks``.
+    ///   - pipelineHooks: Pipeline 2.0 hooks for logging, analytics, and time travel.
+    ///   - timeTravel: When set, automatically appended to pipeline hooks and exposed via ``undoTimeTravel()`` / ``redoTimeTravel()``.
     ///   - eventBus: An optional EventBus for cross-component communication.
     public init(
         initialState: R.State,
         reducer: R,
         middlewares: @escaping () -> [AnyMiddleware<R.State, R.Action>] = { [] },
+        pipelineHooks: @escaping () -> [AnyPipelineHook<R.State, R.Action>] = { [] },
+        timeTravel: TimeTravelPipelineHook<R.State, R.Action>? = nil,
         eventBus: EventBus = EventBus()
     ) {
         self.stateActor = StateActor(initialState)
         self.subscribersActor = SubscribersActor()
-        self.reducer = reducer
-        let middlewaresArray = middlewares()
-        self.middlewares = middlewaresArray
+        self.effectRunner = EffectRunner()
+        self.timeTravelHook = timeTravel
         self.eventBus = eventBus
         self.initialState = initialState
-        
-        // Initialize DispatchActor with Store references
+
+        var hooks = pipelineHooks()
+        hooks.append(contentsOf: middlewares().map { AnyPipelineHook(MiddlewarePipelineHook($0)) })
+        if let timeTravel {
+            hooks.append(AnyPipelineHook(timeTravel))
+        }
+
         self.dispatchActor = DispatchActor(
             stateActor: stateActor,
             subscribersActor: subscribersActor,
             reducer: reducer,
-            middlewares: middlewaresArray
+            hooks: hooks,
+            effectRunner: effectRunner
         )
     }
 
     /// The current state of the store.
-    ///
-    /// Accessing this property is asynchronous and will return the current state.
-    /// State updates are processed sequentially to ensure consistency.
     public var state: R.State {
         get async {
             await stateActor.state
@@ -87,18 +64,11 @@ public final class Store<R: Reducer>: Sendable {
     }
 
     /// Returns the initial state that was used when creating the store.
-    ///
-    /// - Returns: The initial state value.
     public func getInitialState() -> R.State {
-        return initialState
+        initialState
     }
 
-    /// Dispatches an action to be processed by the store.
-    ///
-    /// The action will be processed through all middlewares first, then through the reducer.
-    /// State updates and subscriber notifications happen sequentially to ensure order.
-    ///
-    /// - Parameter action: The action to dispatch.
+    /// Dispatches an action through the pipeline.
     public func dispatch(_ action: R.Action) {
         Task {
             await dispatchActor.dispatch(action) { [weak self] action in
@@ -108,11 +78,6 @@ public final class Store<R: Reducer>: Sendable {
     }
 
     /// Subscribes to state changes.
-    ///
-    /// The subscriber will be called immediately with the current state, and then
-    /// whenever the state changes.
-    ///
-    /// - Parameter subscriber: A closure that receives state updates.
     public func subscribe(_ subscriber: @escaping @Sendable (R.State) -> Void) {
         Task {
             await subscribersActor.addSubscriber(subscriber)
@@ -121,119 +86,110 @@ public final class Store<R: Reducer>: Sendable {
         }
     }
 
+    /// Cancels a running effect by id.
+    public func cancelEffect(id: EffectID) {
+        Task {
+            await effectRunner.cancel(id: id)
+        }
+    }
+
+    /// Cancels all tracked long-lived effects.
+    public func cancelAllEffects() {
+        Task {
+            await effectRunner.cancelAll()
+        }
+    }
+
+    /// Steps backward in time-travel history and applies the state when available.
+    @discardableResult
+    public func undoTimeTravel() async -> R.State? {
+        guard let timeTravelHook else { return nil }
+        guard let restored = await timeTravelHook.undo() else { return nil }
+        await stateActor.setState(restored)
+        await subscribersActor.notifySubscribers(restored)
+        return restored
+    }
+
+    /// Steps forward in time-travel history and applies the state when available.
+    @discardableResult
+    public func redoTimeTravel() async -> R.State? {
+        guard let timeTravelHook else { return nil }
+        guard let restored = await timeTravelHook.redo() else { return nil }
+        await stateActor.setState(restored)
+        await subscribersActor.notifySubscribers(restored)
+        return restored
+    }
+
     /// Returns the EventBus associated with this store.
-    ///
-    /// - Returns: The EventBus instance for publishing and subscribing to events.
     @MainActor
     public func getEventBus() -> EventBus {
-        return eventBus
+        eventBus
+    }
+
+    func bindGraphLifecycle(_ hook: GraphLifecyclePipelineHook<R.State, R.Action>) where R.State: GraphStateContainer {
+        hook.bind(effectRunner: effectRunner)
     }
 }
 
-/// An actor that ensures sequential processing of actions.
-///
-/// This actor guarantees that all actions are processed one at a time,
-/// preventing race conditions and ensuring state consistency.
 private actor DispatchActor<State, Action, R: Reducer> where R.State == State, R.Action == Action {
     private let stateActor: StateActor<State>
     private let subscribersActor: SubscribersActor<State>
-    private let reducer: R
-    private let middlewares: [AnyMiddleware<State, Action>]
-    
+    private let pipeline: ActionPipeline<State, Action, R>
+    private let effectRunner: EffectRunner<Action>
+    private var queuedActions: [Action] = []
+    private var isDrainingQueue = false
+
     init(
         stateActor: StateActor<State>,
         subscribersActor: SubscribersActor<State>,
         reducer: R,
-        middlewares: [AnyMiddleware<State, Action>]
+        hooks: [AnyPipelineHook<State, Action>],
+        effectRunner: EffectRunner<Action>
     ) {
         self.stateActor = stateActor
         self.subscribersActor = subscribersActor
-        self.reducer = reducer
-        self.middlewares = middlewares
+        self.effectRunner = effectRunner
+        self.pipeline = ActionPipeline(hooks: hooks, reducer: reducer)
     }
-    
-    /// Processes an action through middlewares and reducer, updating state sequentially.
-    ///
-    /// This method ensures that all actions are processed in order by using actor isolation.
-    /// It first processes middlewares, then applies the reducer, updates state, notifies subscribers,
-    /// and finally runs any effects returned by the reducer.
-    ///
-    /// - Parameters:
-    ///   - action: The action to process.
-    ///   - dispatchCallback: A closure to dispatch new actions (used for effects).
+
     func dispatch(
         _ action: Action,
         dispatchCallback: @escaping @Sendable (Action) -> Void
     ) async {
-        // Get current state
-        let currentState = await stateActor.state
-        
-        // Process through all middlewares
-        for middleware in middlewares {
-            let effects = await middleware.process(
-                state: currentState,
-                action: action,
-                emit: dispatchCallback
-            )
-            
-            // Run middleware effects
-            for effect in effects {
-                await effect.run(dispatch: dispatchCallback)
-            }
+        queuedActions.append(action)
+        guard !isDrainingQueue else { return }
+
+        isDrainingQueue = true
+        while !queuedActions.isEmpty {
+            let next = queuedActions.removeFirst()
+            await process(next, dispatchCallback: dispatchCallback)
         }
-        
-        // Apply reducer to update state
-        var newState = currentState
-        let effects = reducer.reduce(state: &newState, action: action)
-        
-        // Update state and notify subscribers
-        await stateActor.setState(newState)
-        await subscribersActor.notifySubscribers(newState)
-        
-        // Run reducer effects
-        for effect in effects {
-            await effect.run(dispatch: dispatchCallback)
+        isDrainingQueue = false
+    }
+
+    private func process(
+        _ action: Action,
+        dispatchCallback: @escaping @Sendable (Action) -> Void
+    ) async {
+        let stateBefore = await stateActor.state
+
+        guard let result = await pipeline.process(
+            action,
+            stateBefore: stateBefore,
+            dispatchCallback: dispatchCallback
+        ) else {
+            return
         }
-    }
-}
 
-/// An actor that manages the application state.
-///
-/// This actor ensures thread-safe access to the state.
-private actor StateActor<State> {
-    var state: State
+        if !result.preReducerEffects.isEmpty {
+            await effectRunner.run(result.preReducerEffects, dispatch: dispatchCallback)
+        }
 
-    init(_ initialState: State) {
-        self.state = initialState
-    }
+        await stateActor.setState(result.stateAfter)
+        await subscribersActor.notifySubscribers(result.stateAfter)
 
-    /// Updates the state to a new value.
-    ///
-    /// - Parameter newState: The new state value.
-    func setState(_ newState: State) {
-        state = newState
-    }
-}
-
-/// An actor that manages state subscribers.
-///
-/// This actor ensures thread-safe management of subscribers and notifications.
-private actor SubscribersActor<State> {
-    var subscribers: [@Sendable (State) -> Void] = []
-
-    /// Adds a new subscriber to the list.
-    ///
-    /// - Parameter subscriber: The closure to call when state changes.
-    func addSubscriber(_ subscriber: @escaping @Sendable (State) -> Void) {
-        subscribers.append(subscriber)
-    }
-
-    /// Notifies all subscribers of a state change.
-    ///
-    /// - Parameter state: The new state to notify subscribers about.
-    func notifySubscribers(_ state: State) {
-        for subscriber in subscribers {
-            subscriber(state)
+        if !result.postReducerEffects.isEmpty {
+            await effectRunner.run(result.postReducerEffects, dispatch: dispatchCallback)
         }
     }
 }

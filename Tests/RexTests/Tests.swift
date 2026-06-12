@@ -215,6 +215,130 @@ final class RexTests: XCTestCase {
         XCTAssertNotNil(retryEffect)
     }
     
+    // MARK: - AsyncStream Effect Tests
+
+    func testAsyncStreamEffectDispatchesActions() async {
+        let effect = Effect<TestAction>.stream {
+            AsyncStream { continuation in
+                continuation.yield(.increment)
+                continuation.yield(.increment)
+                continuation.finish()
+            }
+        }
+
+        var received: [TestAction] = []
+        for await action in effect.makeStream() {
+            received.append(action)
+        }
+
+        XCTAssertEqual(received, [.increment, .increment])
+    }
+
+    func testCancellableEffectCancelInFlight() async {
+        enum StreamAction: Actionable, Equatable {
+            case start
+            case tick(Int)
+        }
+
+        struct StreamState: Statable {
+            var value: Int = 0
+        }
+
+        struct StreamReducer: Reducer {
+            func reduce(state: inout StreamState, action: StreamAction) -> [Effect<StreamAction>] {
+                switch action {
+                case .start:
+                    return [
+                        Effect(id: "stream", cancelInFlight: true) { emitter in
+                            for index in 1...20 {
+                                try? await Task.sleep(nanoseconds: 20_000_000)
+                                emitter.send(.tick(index))
+                            }
+                        }
+                    ]
+                case .tick(let value):
+                    state.value = value
+                    return []
+                }
+            }
+        }
+
+        let store = Store(initialState: StreamState(), reducer: StreamReducer())
+        store.dispatch(.start)
+        try? await Task.sleep(nanoseconds: 30_000_000)
+        store.dispatch(.start)
+        try? await Task.sleep(nanoseconds: 150_000_000)
+
+        let state = await store.state
+        XCTAssertLessThan(state.value, 20)
+    }
+
+    // MARK: - Pipeline Hook Tests
+
+    func testPipelineHookAbortsAction() async {
+        struct BlockResetHook: PipelineHook {
+            typealias State = TestState
+            typealias Action = TestAction
+
+            func handle(
+                phase: PipelinePhase<TestAction, TestState>,
+                context: PipelineContext<TestAction, TestState>
+            ) async -> HookResult<TestAction> {
+                if case .willReceive(.reset) = phase {
+                    return .abort
+                }
+                return .continue
+            }
+        }
+
+        var initial = TestState()
+        initial.count = 5
+        let store = Store(
+            initialState: initial,
+            reducer: TestReducer(),
+            pipelineHooks: { [AnyPipelineHook(BlockResetHook())] }
+        )
+
+        store.dispatch(TestAction.reset)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        let state = await store.state
+        XCTAssertEqual(state.count, 5)
+    }
+
+    func testTimeTravelRecordsAutomatically() async {
+        let timeTravel = TimeTravelPipelineHook<TestState, TestAction>()
+        let store = Store(
+            initialState: TestState(),
+            reducer: TestReducer(),
+            timeTravel: timeTravel
+        )
+
+        store.dispatch(.increment)
+        store.dispatch(.increment)
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        let history = await timeTravel.history()
+        XCTAssertEqual(history.count, 2)
+        XCTAssertEqual(history[0].stateAfter.count, 1)
+        XCTAssertEqual(history[1].stateAfter.count, 2)
+
+        let undone = await store.undoTimeTravel()
+        XCTAssertEqual(undone?.count, 1)
+
+        let state = await store.state
+        XCTAssertEqual(state.count, 1)
+    }
+
+    func testDispatchUpdatesState() async {
+        let store = Store(initialState: TestState(), reducer: TestReducer())
+        store.dispatch(.increment)
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        let state = await store.state
+        XCTAssertEqual(state.count, 1)
+    }
+
     // MARK: - Store Tests
     
     func testStoreInitialization() {
